@@ -5,11 +5,12 @@ o que vai para o banco e o que o contador vê.
 """
 
 import uuid
+from decimal import Decimal
 
 from django.db import transaction
 from rest_framework import serializers
 
-from auditoria.servicos import registrar
+from auditoria.servicos import registrar, snapshot
 from engines import aliquotas, clientes, registro
 from engines.contratos import (
     AliquotaAnexoSN,
@@ -23,9 +24,10 @@ from engines.contratos import (
     ParAliquotaSN,
 )
 
-from .models import Simulacao, SimulacaoItem
+from .models import AliquotaEfetivaSN, Simulacao, SimulacaoItem
 
 ORIGEM_USUARIO_SN = "informada_pelo_usuario"
+ORIGEM_CADASTRO_SN = "cadastro_do_periodo"
 NOMES_CAMPOS = {"cbs": "CBS", "ibs_estadual": "IBS estadual", "ibs_municipal": "IBS municipal"}
 
 
@@ -140,6 +142,7 @@ def simular_regime_regular(request, dados, entrada):
                 "c_class_trib": item.c_class_trib,
                 "base_calculo": item.base_calculo,
                 "origem_aliquotas": origem,
+                "item_catalogo": dados["itens"][item.numero - 1].get("item_catalogo"),
             }
         )
     return _gravar(request, empresa, Simulacao.Tipo.REGULAR, data, dados, entrada, resultado, linhas, simulacao_id)
@@ -152,10 +155,66 @@ def _par(dados):
     return ParAliquotaSN(cbs=dados["cbs"], ibs=dados["ibs"])
 
 
+class SemAliquotasDoPeriodo(serializers.ValidationError):
+    default_code = "sem_aliquotas_do_periodo"
+
+
+def primeiro_dia(data):
+    return data.replace(day=1)
+
+
+def aliquotas_do_periodo(empresa, data):
+    """Cadastro de alíquotas efetivas da empresa para o mês de `data`, ou ``None``."""
+    return AliquotaEfetivaSN.objects.filter(empresa=empresa, periodo=primeiro_dia(data)).first()
+
+
+def _decimais(par):
+    return {"cbs": Decimal(str(par["cbs"])), "ibs": Decimal(str(par["ibs"]))}
+
+
+def efetivas_do_cadastro(cadastro):
+    """Converte o cadastro no mesmo formato que `AliquotasEfetivasSNSerializer` entrega."""
+    anexos = {}
+    for anexo, valor in cadastro.anexos.items():
+        anexos[anexo] = _decimais(valor)
+        if valor.get("sem_redistribuicao_iss"):
+            anexos[anexo]["sem_redistribuicao_iss"] = _decimais(valor["sem_redistribuicao_iss"])
+    return {
+        "fator_r": cadastro.fator_r,
+        "impedimento_sublimite": cadastro.impedimento_sublimite,
+        "anexos": anexos,
+    }
+
+
 def simular_simples(request, dados, entrada):
-    """Cálculo não assistido do Simples com as alíquotas efetivas informadas pelo contador (D3)."""
+    """Cálculo não assistido do Simples com as alíquotas efetivas do PGDAS-D (D3).
+
+    As alíquotas vêm do cadastro da empresa para o mês da operação (`AliquotaEfetivaSN`) ou, se a
+    requisição trouxer `aliquotas_efetivas`, só para esta simulação. Sem nenhum dos dois, a simulação
+    é recusada antes de chamar o motor.
+    """
     empresa = dados["empresa"]
-    efetivas = dados["aliquotas_efetivas"]
+    efetivas = dados.get("aliquotas_efetivas")
+    origem_base = {"origem": ORIGEM_USUARIO_SN}
+    if efetivas is None:
+        cadastro = aliquotas_do_periodo(empresa, dados["data"])
+        if cadastro is None:
+            raise SemAliquotasDoPeriodo(
+                {
+                    "aliquotas_efetivas": [
+                        f"Sem alíquotas efetivas do Simples cadastradas para {dados['data']:%m/%Y}. "
+                        "Cadastre as alíquotas do PGDAS-D deste período antes de simular."
+                    ]
+                }
+            )
+        efetivas = efetivas_do_cadastro(cadastro)
+        origem_base = {
+            "origem": ORIGEM_CADASTRO_SN,
+            "aliquota_efetiva_sn_id": str(cadastro.pk),
+            "periodo": f"{cadastro.periodo:%Y-%m}",
+            "informado_por": cadastro.informado_por.email if cadastro.informado_por else "",
+            "atualizado_em": cadastro.atualizado_em.isoformat(),
+        }
     anexos = {
         anexo: AliquotaAnexoSN(
             par=_par(valor),
@@ -207,7 +266,7 @@ def simular_simples(request, dados, entrada):
     for item in itens:
         calculado = por_numero.get(item.numero)
         resolucao = calculado.extras.get("resolucao_aliquota", {}) if calculado else {}
-        origem = {"origem": ORIGEM_USUARIO_SN}
+        origem = dict(origem_base)
         if resolucao:
             origem.update(
                 {
@@ -227,6 +286,7 @@ def simular_simples(request, dados, entrada):
                 "c_ativ_sn": item.c_ativ_sn,
                 "base_calculo": item.base_calculo,
                 "origem_aliquotas": origem,
+                "item_catalogo": dados["itens"][item.numero - 1].get("item_catalogo"),
             }
         )
     return _gravar(
@@ -275,6 +335,7 @@ def _gravar(request, empresa, tipo, data, dados, entrada, resultado, linhas, sim
                 SimulacaoItem(
                     escritorio=escritorio,
                     simulacao=simulacao,
+                    item_catalogo=linha.get("item_catalogo"),
                     numero=linha["numero"],
                     estado=str(linha["item"].estado) if linha["item"] else "SEM_RESPOSTA",
                     ncm=linha.get("ncm", ""),
@@ -305,3 +366,47 @@ def _gravar(request, empresa, tipo, data, dados, entrada, resultado, linhas, sim
             },
         )
     return simulacao
+
+
+# --- Alíquotas efetivas do Simples por período ------------------------------------------------------
+
+
+def _anexos_para_json(anexos):
+    saida = {}
+    for anexo, valor in anexos.items():
+        saida[anexo] = {"cbs": str(valor["cbs"]), "ibs": str(valor["ibs"])}
+        if valor.get("sem_redistribuicao_iss"):
+            par = valor["sem_redistribuicao_iss"]
+            saida[anexo]["sem_redistribuicao_iss"] = {"cbs": str(par["cbs"]), "ibs": str(par["ibs"])}
+    return saida
+
+
+def periodo_em_uso(empresa, periodo, ignorar_pk=None):
+    qs = AliquotaEfetivaSN.objects.filter(empresa=empresa, periodo=primeiro_dia(periodo))
+    if ignorar_pk:
+        qs = qs.exclude(pk=ignorar_pk)
+    return qs.exists()
+
+
+@transaction.atomic
+def salvar_aliquotas_sn(request, empresa, dados, instancia=None):
+    """Cria ou edita o cadastro de um período. Edição fica na auditoria com o antes e o depois."""
+    antes = snapshot(instancia) if instancia else None
+    if instancia is None:
+        instancia = AliquotaEfetivaSN(escritorio=request.membership.escritorio, empresa=empresa)
+    instancia.periodo = primeiro_dia(dados["periodo"])
+    instancia.fator_r = dados["fator_r"]
+    instancia.impedimento_sublimite = dados.get("impedimento_sublimite", False)
+    instancia.anexos = _anexos_para_json(dados["anexos"])
+    instancia.observacao = dados.get("observacao", "")
+    instancia.informado_por = request.user
+    instancia.save()
+    acao = "aliquota_sn.editar" if antes else "aliquota_sn.criar"
+    registrar(request, acao, instancia, antes=antes, depois=snapshot(instancia))
+    return instancia
+
+
+@transaction.atomic
+def remover_aliquotas_sn(request, instancia):
+    registrar(request, "aliquota_sn.remover", instancia, antes=snapshot(instancia))
+    instancia.delete()

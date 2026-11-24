@@ -17,4 +17,8 @@ Dados de teste: `app/engines/tests/respostas/` guarda entradas e respostas grava
 oficiais do `docs/exemplos.md` e do OpenAPI de cada um) e `nfse_autorizada_teste.xml`, copiado dos testes
 do gerador DANFSe. Todos MIT, Copyright 2026 Receita Federal do Brasil.
 
+Front-end: [Bootstrap](https://getbootstrap.com) 5.3.3 (MIT, The Bootstrap Authors), copiado sem
+modificação para `app/static/vendor/bootstrap/` com o arquivo `LICENSE`. Leitura de XLSX:
+[openpyxl](https://openpyxl.readthedocs.io) (MIT).
+
 Pendente antes do lançamento: validação jurídica e página "Componentes de código aberto" no produto.

@@ -2,7 +2,7 @@
 
 Plataforma SaaS para escritórios contábeis voltada à Reforma Tributária do Consumo (CBS, IBS e IS).
 
-Status: **Fase 2 (motores)**. Descoberta e planejamento em `docs/descoberta.md` e `docs/planejamento.md`.
+Status: **Fase 3 (simulação pelo navegador)**. Descoberta e planejamento em `docs/descoberta.md` e `docs/planejamento.md`.
 
 ## Estrutura
 
@@ -14,7 +14,10 @@ app/                 Django 5.2 + DRF (o produto)
   empresas/          carteira de empresas do escritório
   auditoria/         registro de criação/edição/remoção com antes e depois
   engines/           clientes dos motores, contratos internos, versões, alíquotas nominais, tabelas oficiais
-  simulacoes/        primeiros cálculos (regime regular e Simples) gravados com payload, resposta e versão
+  simulacoes/        cálculos (regime regular e Simples) gravados com payload, resposta e versão;
+                     alíquotas efetivas do Simples por empresa e mês (D3)
+  catalogo/          produtos e serviços da empresa (NCM/NBS, CST, cClassTrib, cAtivSN), validação e aprovação
+  web/               telas (Django Templates + Bootstrap, sem build de front)
 engines/             motores da Receita como submódulos git, presos nas tags oficiais
 docker/              Dockerfile dos motores Java e configuração do nginx
 docker-compose.yml   mesmo compose para dev, homologação e a VPS
@@ -30,6 +33,39 @@ docker compose up -d --build  # a primeira build dos motores Java leva alguns mi
 curl http://localhost/healthz # versão de cada motor
 docker compose exec django python manage.py createsuperuser
 ```
+
+## Testar pelo navegador
+
+1. Abra `http://localhost/` e entre com o e-mail e a senha do `createsuperuser`.
+2. Um usuário sem escritório cai em **Escritórios** e cria o primeiro ali (vira dono). Pela linha de
+   comando: `docker compose exec django python manage.py criar_escritorio --email voce@exemplo.com`.
+   O escritório escolhido fica na sessão, então a API (`/api/motores/versoes/` etc.) também passa a
+   responder pelo navegador, sem o cabeçalho `X-Escritorio`.
+3. **Empresas → Nova empresa** (regime regular, CRT 3; ou Simples, CRT 1).
+4. Na empresa, **Importar planilha** (baixe o modelo CSV na própria tela) ou **Novo item**. Itens com
+   classificação errada vão para **Revisar** com o erro do motor; os demais esperam aprovação na
+   **Fila de pendentes**.
+5. Empresa do Simples: **Gerenciar períodos** e cadastre as alíquotas do PGDAS-D do mês.
+6. **Nova simulação**: escolha itens do catálogo ou digite os códigos. Data a partir de 2027 preenche
+   CBS/IBS com a tabela do Tributo360 (cadastrada no admin, em *Alíquotas nominais*), e você pode editar.
+7. No resultado: memória de cálculo por item, origem de cada alíquota e versão do motor. **Duplicar como
+   novo cenário** muda uma premissa; em **Simulações**, marque 2 a 4 e **Compare**.
+
+## Telas
+
+| Rota | O que faz |
+|---|---|
+| `/entrar/`, `/criar-conta/`, `/escritorios/` | Login, cadastro de escritório, escolha do escritório ativo (sessão) |
+| `/empresas/` | Carteira: lista, cadastro, edição e página da empresa |
+| `/empresas/{id}/itens/` | Catálogo, fila de pendentes, importação CSV/XLSX e aprovação |
+| `/empresas/{id}/aliquotas-simples/` | Alíquotas efetivas do Simples por mês |
+| `/empresas/{id}/simular/` | Formulário de simulação (regular ou Simples, conforme a empresa) |
+| `/simulacoes/`, `/simulacoes/{id}/`, `/simulacoes/comparar/` | Histórico, resultado e comparação de cenários |
+| `/motores/` | Painel de versões dos motores |
+
+As telas validam pelos mesmos serializers e serviços da API, e as views de `web/views/` passam pelo
+teste de arquitetura (só `Model.tenant(request)`). `web/tests/test_isolamento.py` tenta abrir e alterar
+objetos de outro escritório em toda tela com id na URL.
 
 Serviços: nginx, django (gunicorn), celery worker e beat, postgres 16, redis e os três motores
 (`motor-regime-regular` 1.7.2, `motor-simples` 1.0.2, `motor-danfse` 1.0.0). Os motores não têm
@@ -76,6 +112,8 @@ ruff check . && ruff format --check .
 | `POST /api/simulacoes/regime-regular/` | Calcula uma operação do regime regular e grava a simulação |
 | `POST /api/simulacoes/simples/` | Calcula no Simples com as alíquotas efetivas informadas (D3) |
 | `GET /api/simulacoes/`, `/api/simulacoes/{id}/` | Histórico (filtros `empresa`, `tipo`) e detalhe com itens, payload, resposta e versão |
+| `/api/itens/` | Catálogo (filtros `empresa`, `status`, `q`); `POST importar/` (CSV/XLSX), `POST aprovar/`, `POST {id}/revalidar/`, `GET modelo/` |
+| `/api/aliquotas-simples/` | Alíquotas efetivas do Simples por empresa e mês (`periodo` = `AAAA-MM`) |
 | `GET /api/motores/versoes/` | Painel de versões: o que roda agora, histórico e última sincronização de tabelas |
 | `GET /api/aliquotas-nominais/vigentes/?data=&municipio=` | Alíquotas que a tabela do Tributo360 propõe (D2) |
 
@@ -103,8 +141,9 @@ traduz para o formato do motor e de volta.
   como padrão e o contador pode editar; cada item guarda a origem de cada alíquota
   (`tabela_tributo360`, `editada_pelo_usuario` com o valor anterior, ou `motor_2026`). Sem alíquota na
   tabela nem na requisição, a API responde 400 antes de chamar o motor.
-- **Simples (D3)**: por enquanto as alíquotas efetivas vão na própria requisição; o cadastro por
-  empresa e período (`AliquotaEfetivaSN`) é a Fase 3.
+- **Simples (D3)**: a simulação usa o cadastro `AliquotaEfetivaSN` do mês da operação. Sem cadastro, a
+  API responde 400 (e a tela orienta o cadastro) sem chamar o motor. `aliquotas_efetivas` na
+  requisição continua aceito, só para aquela simulação.
 - **Tabelas oficiais**: CST, cClassTrib, NCM e NBS copiadas para `ItemTabela` pelo beat (de hora em
   hora; só baixa quando a `versao_db` muda). Nunca apaga: conteúdo novo vira registro novo e o que
   saiu da tabela oficial só perde `vigente`. À mão: `python manage.py sincronizar_tabelas [--forcar]`.

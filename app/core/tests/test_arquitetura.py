@@ -42,7 +42,16 @@ def _violacoes(caminho, modelos):
 
 
 def test_existem_modelos_de_tenant():
-    assert {"Empresa", "Membership", "Convite", "Auditoria", "Simulacao", "SimulacaoItem"} <= _modelos_de_tenant()
+    assert {
+        "Empresa",
+        "Membership",
+        "Convite",
+        "Auditoria",
+        "Simulacao",
+        "SimulacaoItem",
+        "ItemCatalogo",
+        "AliquotaEfetivaSN",
+    } <= _modelos_de_tenant()
 
 
 def test_views_e_serializers_nao_consultam_sem_escopo():
@@ -71,7 +80,7 @@ def test_todo_modelo_de_negocio_e_tenant():
         "SincronizacaoTabela",
         "ItemTabela",
     }
-    apps_do_produto = {"contas", "empresas", "auditoria", "engines", "simulacoes"}
+    apps_do_produto = {"contas", "empresas", "auditoria", "engines", "simulacoes", "catalogo", "web"}
     fora = [
         m.__name__
         for m in apps.get_models()
@@ -81,3 +90,9 @@ def test_todo_modelo_de_negocio_e_tenant():
         and not m._meta.auto_created
     ]
     assert not fora, f"Modelos sem escopo de escritório: {fora}"
+
+
+def test_telas_web_estao_vigiadas():
+    """As views das telas (web/views/*.py) também passam pelo detector de acesso sem escopo."""
+    vigiados = {str(c.relative_to(settings.BASE_DIR)) for c in _arquivos()}
+    assert {"web/views/simulacoes.py", "web/views/catalogo.py", "web/views/empresas.py"} <= vigiados

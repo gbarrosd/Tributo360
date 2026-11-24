@@ -37,6 +37,21 @@ def cadastrar_escritorio(request, dados):
     return usuario, membership
 
 
+@transaction.atomic
+def criar_escritorio_para(request, usuario, razao_social, documento):
+    """Escritório novo (trial) para um usuário que já existe, com ele como dono.
+
+    Caminho para quem entrou sem escritório: superuser criado pelo `createsuperuser` ou quem saiu de
+    todos os escritórios. Também usado pelo comando `criar_escritorio`.
+    """
+    escritorio = Escritorio.objects.create(razao_social=razao_social, documento=documento)
+    Assinatura.criar_para(escritorio)
+    membership = Membership.objects.create(escritorio=escritorio, usuario=usuario, papel=Papel.DONO)
+    request.user = usuario
+    registrar(request, "escritorio.criar", escritorio, depois=snapshot(escritorio), escritorio=escritorio)
+    return membership
+
+
 # --- Membros ---------------------------------------------------------------------------
 
 

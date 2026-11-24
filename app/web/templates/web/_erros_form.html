@@ -1,0 +1,6 @@
+{% if form.non_field_errors %}
+<div class="alert alert-danger">
+  {% if form.non_field_errors|length == 1 %}{{ form.non_field_errors.0 }}{% else %}
+  <ul class="mb-0">{% for erro in form.non_field_errors %}<li>{{ erro }}</li>{% endfor %}</ul>{% endif %}
+</div>
+{% endif %}

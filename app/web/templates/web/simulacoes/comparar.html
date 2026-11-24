@@ -1,0 +1,55 @@
+{% extends "web/base.html" %}{% load tributo %}
+{% block titulo %}Comparar cenários{% endblock %}
+{% block conteudo %}
+<nav class="small mb-2"><a href="{% url 'web:historico' %}">Simulações</a></nav>
+<h1 class="h4 mb-3">Comparação de cenários</h1>
+{% if versoes_diferentes %}
+<div class="alert alert-warning small">Os cenários foram calculados com <strong>versões diferentes do motor</strong>. Parte da diferença pode vir
+  da troca de versão (regras ou tabelas), e não só das premissas.</div>
+{% endif %}
+<div class="table-responsive">
+<table class="table table-bordered align-top small comparacao">
+  <thead>
+    <tr><th style="width: 12rem"></th>
+      {% for c in colunas %}<th><a href="{% url 'web:simulacao' c.simulacao.pk %}">{{ c.simulacao.rotulo|default:"(sem nome)" }}</a>
+        <div class="fw-normal text-body-secondary">{% if forloop.first %}referência{% else %}cenário {{ forloop.counter }}{% endif %}</div></th>{% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    <tr class="table-light"><th colspan="{{ colunas|length|add:1 }}">Resultado</th></tr>
+    <tr><th>Base de cálculo</th>{% for c in colunas %}<td class="text-end">{{ c.simulacao.total_base_calculo|moeda }}</td>{% endfor %}</tr>
+    <tr><th>CBS</th>{% for c in colunas %}<td class="text-end">{{ c.simulacao.total_cbs|moeda }}</td>{% endfor %}</tr>
+    <tr><th>IBS</th>{% for c in colunas %}<td class="text-end">{{ c.simulacao.total_ibs|moeda }}</td>{% endfor %}</tr>
+    <tr><th>Imposto Seletivo</th>{% for c in colunas %}<td class="text-end">{{ c.simulacao.total_imposto_seletivo|moeda }}</td>{% endfor %}</tr>
+    <tr><th>Total de tributos</th>{% for c in colunas %}<td class="text-end fw-semibold">{{ c.total_tributos|moeda }}</td>{% endfor %}</tr>
+    <tr><th>Carga sobre a base</th>{% for c in colunas %}<td class="text-end">{% if c.carga is not None %}{{ c.carga|numero:2 }}%{% else %}—{% endif %}</td>{% endfor %}</tr>
+    <tr><th>Diferença para a referência</th>{% for c in colunas %}<td class="text-end {% if c.diferenca > 0 %}text-danger{% elif c.diferenca < 0 %}text-success{% endif %}">
+      {% if forloop.first %}—{% else %}R$ {{ c.diferenca|sinal }}{% if c.diferenca_pct is not None %} ({{ c.diferenca_pct|sinal }}%){% endif %}{% endif %}</td>{% endfor %}</tr>
+
+    <tr class="table-light"><th colspan="{{ colunas|length|add:1 }}">Premissas</th></tr>
+    <tr><th>Empresa</th>{% for c in colunas %}<td>{{ c.simulacao.empresa.razao_social }}<div class="text-body-secondary">{{ c.simulacao.get_tipo_display }}</div></td>{% endfor %}</tr>
+    <tr><th>Data</th>{% for c in colunas %}<td>{% if c.premissas.fato_gerador %}{{ c.premissas.fato_gerador|date:"d/m/Y H:i" }}{% else %}{{ c.simulacao.data_fato_gerador|date:"d/m/Y" }}{% endif %}</td>{% endfor %}</tr>
+    <tr><th>Local</th>{% for c in colunas %}<td>{{ c.premissas.local|default:"—" }}</td>{% endfor %}</tr>
+    <tr><th>Documento</th>{% for c in colunas %}<td>{{ c.premissas.documento }}</td>{% endfor %}</tr>
+    <tr><th>Alíquotas do Simples</th>{% for c in colunas %}<td>{{ c.premissas.aliquotas_sn|default:"—" }}</td>{% endfor %}</tr>
+    <tr><th>Situação</th>{% for c in colunas %}<td>{% situacao c.simulacao.situacao %}{% if c.simulacao.simulado and c.simulacao.situacao != "simulado" %} <span class="badge text-bg-info">Simulado</span>{% endif %}</td>{% endfor %}</tr>
+
+    <tr class="table-light"><th colspan="{{ colunas|length|add:1 }}">Versão do motor</th></tr>
+    <tr><th>Motor e base</th>{% for c in colunas %}<td>{% include "web/simulacoes/_versao.html" with versao=c.simulacao.versao_motor %}</td>{% endfor %}</tr>
+
+    <tr class="table-light"><th colspan="{{ colunas|length|add:1 }}">Itens: classificação e alíquotas aplicadas</th></tr>
+    {% for indice in indices_itens %}
+    <tr><th>Item {{ indice|add:1 }}</th>
+      {% for c in colunas %}{% with item=c.premissas.itens|item_da_lista:indice %}
+      <td>{% if item %}
+        <div class="font-monospace">{{ item.codigo }}{% if item.cst %} · CST {{ item.cst }}{% endif %} · {{ item.c_class_trib }}</div>
+        <div>Base {{ item.base|moeda }} {% estado_item item.estado %}</div>
+        <ul class="list-unstyled mb-0 mt-1">{% for a in item.aliquotas %}<li>{{ a.nome }} {{ a.valor|pct }} <span class="text-body-secondary">({{ a.origem }}{% if a.detalhe %}; {{ a.detalhe }}{% endif %})</span></li>{% endfor %}</ul>
+      {% else %}<span class="text-body-secondary">—</span>{% endif %}</td>
+      {% endwith %}{% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

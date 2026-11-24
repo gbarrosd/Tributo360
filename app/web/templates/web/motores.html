@@ -1,0 +1,41 @@
+{% extends "web/base.html" %}
+{% block titulo %}Motores{% endblock %}
+{% block conteudo %}
+<h1 class="h4 mb-3">Motores de cálculo</h1>
+<div class="row g-3 mb-4">
+  {% for nome, info in atuais.items %}
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between">
+          <h2 class="h6">{{ nome }}</h2>
+          <span class="badge text-bg-{% if info.status == 'ok' %}success{% else %}danger{% endif %}">{{ info.status }}</span>
+        </div>
+        <div class="small">
+          {% if info.versaoApp %}App {{ info.versaoApp }}{% endif %}
+          {% if info.versaoDb %}<br>Base {{ info.versaoDb }}{% endif %}
+          {% if info.dataVersaoDb %}<br>Base de {{ info.dataVersaoDb }}{% endif %}
+          {% if info.erro %}<br><span class="text-danger">{{ info.erro }}</span>{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<h2 class="h6">Versões que já calcularam aqui</h2>
+<table class="table table-sm">
+  <thead><tr><th>Motor</th><th>App</th><th>Base</th><th>Data da base</th><th>Vista primeiro em</th><th>Por último em</th></tr></thead>
+  <tbody>
+  {% for v in historico %}
+    <tr><td>{{ v.motor }}</td><td>{{ v.versao_app }}</td><td>{{ v.versao_db }}</td><td>{{ v.data_db|date:"d/m/Y" }}</td>
+      <td>{{ v.vista_primeiro_em|date:"d/m/Y H:i" }}</td><td>{{ v.vista_por_ultimo_em|date:"d/m/Y H:i" }}</td></tr>
+  {% empty %}<tr><td colspan="6" class="text-body-secondary">Nenhuma versão registrada ainda.</td></tr>{% endfor %}
+  </tbody>
+</table>
+<p class="small text-body-secondary">
+  Tabelas oficiais (CST, cClassTrib, NCM, NBS):
+  {% if sincronizacao %}base {{ sincronizacao.versao_motor.versao_db }}, {{ sincronizacao.get_status_display|default:sincronizacao.status }}
+  em {{ sincronizacao.concluida_em|default:sincronizacao.iniciada_em|date:"d/m/Y H:i" }}.{% else %}ainda não sincronizadas.{% endif %}
+  O mesmo conteúdo sai em JSON em <a href="/api/motores/versoes/">/api/motores/versoes/</a>.
+</p>
+{% endblock %}

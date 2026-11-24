@@ -1,0 +1,98 @@
+{% extends "web/base.html" %}{% load tributo %}
+{% block titulo %}{{ simulacao.rotulo|default:"Simulação" }}{% endblock %}
+{% block conteudo %}
+<nav class="small mb-2"><a href="{% url 'web:historico' %}">Simulações</a> › <a href="{% url 'web:empresa' simulacao.empresa_id %}">{{ simulacao.empresa.razao_social }}</a></nav>
+<div class="d-flex flex-wrap gap-2 justify-content-between align-items-start mb-3">
+  <div>
+    <h1 class="h4 mb-1">{{ simulacao.rotulo|default:"Simulação" }} {% situacao simulacao.situacao %}
+      {% if simulacao.simulado and simulacao.situacao != "simulado" %}<span class="badge text-bg-info">Simulado</span>{% endif %}</h1>
+    <div class="small text-body-secondary">{{ simulacao.get_tipo_display }} · {{ simulacao.empresa.razao_social }} ·
+      feita por {{ simulacao.usuario|default:"—" }} em {{ simulacao.criado_em|date:"d/m/Y H:i" }}</div>
+  </div>
+  {% if pode.simular and simulacao.empresa.ativa %}
+  <a class="btn btn-outline-primary" href="{% url 'web:simular' simulacao.empresa_id %}?a_partir_de={{ simulacao.pk }}">Duplicar como novo cenário</a>
+  {% endif %}
+</div>
+
+{% if simulacao.simulado %}
+<div class="alert alert-secondary small">Resultado <strong>simulado</strong>: o motor calculou com alíquotas informadas
+  (tabela do Tributo360, edição do contador ou PGDAS-D), não com alíquotas oficiais publicadas no motor. Serve para planejamento,
+  não substitui a apuração.</div>
+{% endif %}
+{% for aviso in avisos_motor %}<div class="alert alert-warning small">{{ aviso }}</div>{% endfor %}
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3"><div class="card card-body"><div class="small text-body-secondary">Base de cálculo</div><div class="fs-5">{{ simulacao.total_base_calculo|moeda }}</div></div></div>
+  <div class="col-6 col-md-2"><div class="card card-body"><div class="small text-body-secondary">CBS</div><div class="fs-5">{{ simulacao.total_cbs|moeda }}</div></div></div>
+  <div class="col-6 col-md-2"><div class="card card-body"><div class="small text-body-secondary">IBS</div><div class="fs-5">{{ simulacao.total_ibs|moeda }}</div></div></div>
+  <div class="col-6 col-md-2"><div class="card card-body"><div class="small text-body-secondary">Imposto Seletivo</div><div class="fs-5">{{ simulacao.total_imposto_seletivo|moeda }}</div></div></div>
+  <div class="col-12 col-md-3"><div class="card card-body"><div class="small text-body-secondary">Total de tributos</div><div class="fs-5 fw-semibold">{{ total_tributos|moeda }}</div></div></div>
+</div>
+
+<div class="card mb-4"><div class="card-body small">
+  <h2 class="h6">Premissas</h2>
+  <dl class="row mb-0">
+    <dt class="col-sm-3">Data</dt><dd class="col-sm-9">{% if premissas.fato_gerador %}{{ premissas.fato_gerador|date:"d/m/Y H:i" }}{% else %}{{ simulacao.data_fato_gerador|date:"d/m/Y" }}{% endif %}</dd>
+    {% if premissas.local %}<dt class="col-sm-3">Local</dt><dd class="col-sm-9">{{ premissas.local }}</dd>{% endif %}
+    <dt class="col-sm-3">Documento</dt><dd class="col-sm-9">{{ premissas.documento }}</dd>
+    {% if premissas.aliquotas_sn %}<dt class="col-sm-3">Alíquotas do Simples</dt><dd class="col-sm-9">{{ premissas.aliquotas_sn }}</dd>{% endif %}
+    <dt class="col-sm-3">Motor</dt><dd class="col-sm-9">{% include "web/simulacoes/_versao.html" with versao=simulacao.versao_motor %} · {{ simulacao.duracao_ms }} ms</dd>
+  </dl>
+</div></div>
+
+<h2 class="h5">Itens e memória de cálculo</h2>
+{% for linha in itens %}{% with item=linha.item %}
+<div class="card mb-3">
+  <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
+    <div><strong>Item {{ item.numero }}</strong>
+      <span class="font-monospace small ms-2">{% if item.ncm %}NCM {{ item.ncm }}{% elif item.nbs %}NBS {{ item.nbs }}{% endif %}
+        {% if item.cst %} · CST {{ item.cst }}{% endif %} · cClassTrib {{ item.c_class_trib }}{% if item.c_ativ_sn %} · cAtivSN {{ item.c_ativ_sn }}{% endif %}</span>
+      {% if item.item_catalogo_id %}<a class="small ms-2" href="{% url 'web:item-editar' item.item_catalogo_id %}">ver no catálogo</a>{% endif %}
+    </div>
+    {% estado_item item.estado %}
+  </div>
+  <div class="card-body">
+    {% for erro in item.erros %}
+    <div class="alert alert-danger py-2 small mb-2"><span class="font-monospace">{{ erro.codigo }}</span> {{ erro.titulo }}{% if erro.detalhe %}: {{ erro.detalhe }}{% endif %}
+      {% if erro.campo %}<span class="text-body-secondary">({{ erro.campo }})</span>{% endif %}</div>
+    {% endfor %}
+    <div class="row g-3">
+      <div class="col-lg-5">
+        <table class="table table-sm small mb-2">
+          <tr><th>Base de cálculo</th><td class="text-end">{{ item.valores.base_calculo|moeda }}</td></tr>
+          <tr><th>CBS</th><td class="text-end">{{ item.valores.cbs|moeda }}</td></tr>
+          {% if simulacao.tipo == "regular" %}
+          <tr><th>IBS estadual</th><td class="text-end">{{ item.valores.ibs_uf|moeda }}</td></tr>
+          <tr><th>IBS municipal</th><td class="text-end">{{ item.valores.ibs_mun|moeda }}</td></tr>
+          {% endif %}
+          <tr><th>IBS</th><td class="text-end">{{ item.valores.ibs|moeda }}</td></tr>
+          {% if item.valores.imposto_seletivo %}<tr><th>Imposto Seletivo</th><td class="text-end">{{ item.valores.imposto_seletivo|moeda }}</td></tr>{% endif %}
+        </table>
+        <div class="small fw-semibold mb-1">Alíquotas aplicadas</div>
+        <ul class="list-unstyled small mb-0">
+          {% for a in linha.aliquotas %}
+          <li class="mb-1"><strong>{{ a.nome }} {{ a.valor|pct }}</strong>
+            <span class="badge {% if a.codigo_origem == 'editada_pelo_usuario' %}text-bg-warning{% else %}text-bg-light border{% endif %}">{{ a.origem }}</span>
+            {% if a.detalhe %}<div class="text-body-secondary">{{ a.detalhe }}</div>{% endif %}</li>
+          {% empty %}<li class="text-body-secondary">—</li>{% endfor %}
+        </ul>
+      </div>
+      <div class="col-lg-7">
+        <div class="small fw-semibold mb-1">Memória de cálculo do motor</div>
+        {{ item.memoria|memoria }}
+      </div>
+    </div>
+  </div>
+</div>
+{% endwith %}{% endfor %}
+
+<details class="mt-4 small">
+  <summary>Entrada, payload enviado ao motor e resposta integral</summary>
+  <div class="row g-3 mt-1">
+    <div class="col-lg-4"><div class="fw-semibold">Entrada</div><pre class="bg-body-tertiary p-2 rounded">{{ simulacao.entrada|json_bonito }}</pre></div>
+    <div class="col-lg-4"><div class="fw-semibold">Payload enviado</div><pre class="bg-body-tertiary p-2 rounded">{{ simulacao.payload_enviado|json_bonito }}</pre></div>
+    <div class="col-lg-4"><div class="fw-semibold">Resposta do motor</div><pre class="bg-body-tertiary p-2 rounded">{{ simulacao.resposta_bruta|json_bonito }}</pre></div>
+  </div>
+  <p>Também em JSON: <a href="/api/simulacoes/{{ simulacao.pk }}/">/api/simulacoes/{{ simulacao.pk }}/</a></p>
+</details>
+{% endblock %}

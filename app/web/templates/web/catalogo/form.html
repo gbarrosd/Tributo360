@@ -1,0 +1,49 @@
+{% extends "web/base.html" %}{% load tributo %}
+{% block titulo %}{% if item %}{{ item.codigo }}{% else %}Novo item{% endif %}{% endblock %}
+{% block conteudo %}
+<nav class="small mb-2"><a href="{% url 'web:empresa' empresa.pk %}">{{ empresa.razao_social }}</a> › <a href="{% url 'web:catalogo' empresa.pk %}">Catálogo</a></nav>
+<h1 class="h4 mb-3">{% if item %}Item {{ item.codigo }} {% status_item item.status_classificacao %}{% else %}Novo item{% endif %}</h1>
+{% if item and item.erros_validacao %}
+<div class="alert alert-danger">
+  <div class="fw-semibold mb-1">A classificação precisa de revisão</div>
+  {% include "web/catalogo/_erros_validacao.html" %}
+</div>
+{% elif item %}
+<div class="alert alert-{% if item.status_classificacao == 'aprovado' %}success{% else %}warning{% endif %} small">
+  {% if item.status_classificacao == "aprovado" %}Aprovado por {{ item.aprovado_por|default:"—" }} em {{ item.aprovado_em|date:"d/m/Y H:i" }}. Mudar a classificação volta o item para pendente.
+  {% else %}Sem erros de validação. Falta a aprovação de quem responde pela classificação (dono, administrador ou contador).{% endif %}
+  {% if item.validado_em %}<div class="text-body-secondary">Validado em {{ item.validado_em|date:"d/m/Y H:i" }}{% if item.validacao.motor %} com {{ item.validacao.motor }}{% endif %}.</div>{% endif %}
+  {% for aviso in item.validacao.avisos %}<div class="text-body-secondary">{{ aviso }}</div>{% endfor %}
+</div>
+{% endif %}
+<form method="post" class="card card-body mb-3" style="max-width: 48rem" novalidate>{% csrf_token %}
+  {% include "web/_erros_form.html" %}
+  <div class="row">
+    {% include "web/_campo.html" with campo=form.tipo classe="col-md-4 mb-3" %}
+    {% include "web/_campo.html" with campo=form.codigo classe="col-md-8 mb-3" %}
+  </div>
+  {% include "web/_campo.html" with campo=form.descricao %}
+  <div class="row">
+    {% include "web/_campo.html" with campo=form.ncm classe="col-md-4 mb-3" %}
+    {% include "web/_campo.html" with campo=form.nbs classe="col-md-4 mb-3" %}
+    {% include "web/_campo.html" with campo=form.c_ativ_sn classe="col-md-4 mb-3" %}
+    {% include "web/_campo.html" with campo=form.cst classe="col-md-4 mb-3" %}
+    {% include "web/_campo.html" with campo=form.c_class_trib classe="col-md-4 mb-3" %}
+  </div>
+  {% if pode.cadastrar_itens %}<div><button class="btn btn-primary">Salvar e validar</button></div>{% endif %}
+</form>
+{% if item %}
+<div class="d-flex gap-2">
+  {% if pode.aprovar_classificacao and item.status_classificacao == "pendente" %}
+  <form method="post" action="{% url 'web:catalogo-aprovar' empresa.pk %}">{% csrf_token %}
+    <input type="hidden" name="itens" value="{{ item.pk }}"><input type="hidden" name="proximo" value="{{ request.path }}">
+    <button class="btn btn-success">Aprovar classificação</button>
+  </form>
+  {% endif %}
+  {% if pode.cadastrar_itens %}
+  <form method="post" action="{% url 'web:item-revalidar' item.pk %}">{% csrf_token %}<button class="btn btn-outline-secondary">Validar de novo</button></form>
+  <form method="post" action="{% url 'web:item-inativar' item.pk %}">{% csrf_token %}<button class="btn btn-outline-danger">Retirar do catálogo</button></form>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -4,6 +4,7 @@ from rest_framework.views import exception_handler
 
 from engines.http import MotorIndisponivel, OperacaoRecusada
 
+from .permissions import TemEscritorio
 from .tenancy import SemEscopoDeEscritorio
 
 
@@ -22,7 +23,7 @@ class OperacaoNaoProcessavel(exceptions.APIException):
 def handler(exc, context):
     """Converte erros de domínio em respostas da API."""
     if isinstance(exc, SemEscopoDeEscritorio):
-        exc = exceptions.PermissionDenied("Selecione um escritório (cabeçalho X-Escritorio).")
+        exc = exceptions.PermissionDenied(TemEscritorio.message)
     elif isinstance(exc, DjangoValidationError):
         detalhe = exc.message_dict if hasattr(exc, "error_dict") else {"detail": exc.messages}
         exc = exceptions.ValidationError(detalhe)

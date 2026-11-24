@@ -1,0 +1,57 @@
+{% extends "web/base.html" %}{% load tributo %}
+{% block titulo %}Catálogo · {{ empresa.razao_social }}{% endblock %}
+{% block conteudo %}
+<nav class="small mb-2"><a href="{% url 'web:empresas' %}">Empresas</a> › <a href="{% url 'web:empresa' empresa.pk %}">{{ empresa.razao_social }}</a></nav>
+<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0">Catálogo de produtos e serviços</h1>
+  <div class="d-flex gap-2">
+    {% if pode.cadastrar_itens %}
+    <a class="btn btn-outline-secondary" href="{% url 'web:catalogo-importar' empresa.pk %}">Importar planilha</a>
+    <a class="btn btn-primary" href="{% url 'web:item-novo' empresa.pk %}">Novo item</a>
+    {% endif %}
+  </div>
+</div>
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item"><a class="nav-link {% if not status %}active{% endif %}" href="?">Todos</a></li>
+  <li class="nav-item"><a class="nav-link {% if status == 'fila' %}active{% endif %}" href="?status=fila">Fila de pendentes <span class="badge text-bg-warning">{{ fila }}</span></a></li>
+  <li class="nav-item"><a class="nav-link {% if status == 'revisar' %}active{% endif %}" href="?status=revisar">Revisar <span class="badge text-bg-danger">{{ contagem.revisar }}</span></a></li>
+  <li class="nav-item"><a class="nav-link {% if status == 'aprovado' %}active{% endif %}" href="?status=aprovado">Aprovados <span class="badge text-bg-success">{{ contagem.aprovado }}</span></a></li>
+</ul>
+<form class="row g-2 mb-3" method="get">
+  <input type="hidden" name="status" value="{{ status }}">
+  <div class="col-sm-6 col-md-4"><input class="form-control" name="q" value="{{ busca }}" placeholder="Código ou descrição"></div>
+  <div class="col-auto"><button class="btn btn-outline-secondary">Buscar</button></div>
+</form>
+<form method="post" action="{% url 'web:catalogo-aprovar' empresa.pk %}">{% csrf_token %}
+  <input type="hidden" name="proximo" value="{{ request.get_full_path }}">
+  {% if pode.aprovar_classificacao %}
+  <div class="mb-2"><button class="btn btn-sm btn-success" data-exige-selecao>Aprovar selecionados</button>
+    <span class="small text-body-secondary ms-2">Itens em "revisar" precisam ser corrigidos antes.</span></div>
+  {% endif %}
+  <div class="table-responsive">
+  <table class="table table-sm table-hover align-middle">
+    <thead><tr>
+      {% if pode.aprovar_classificacao %}<th><input class="form-check-input" type="checkbox" data-marcar-todos></th>{% endif %}
+      <th>Código</th><th>Descrição</th><th>NCM/NBS</th><th>CST</th><th>cClassTrib</th>{% if empresa.regime != "regular" %}<th>cAtivSN</th>{% endif %}<th>Situação</th>
+    </tr></thead>
+    <tbody>
+    {% for item in itens %}
+    <tr>
+      {% if pode.aprovar_classificacao %}<td>{% if item.status_classificacao == "pendente" %}<input class="form-check-input" type="checkbox" name="itens" value="{{ item.pk }}">{% endif %}</td>{% endif %}
+      <td class="font-monospace small"><a href="{% url 'web:item-editar' item.pk %}">{{ item.codigo }}</a></td>
+      <td>{{ item.descricao }}{% include "web/catalogo/_erros_validacao.html" %}</td>
+      <td class="font-monospace small">{{ item.ncm|default:item.nbs }}</td>
+      <td class="font-monospace small">{{ item.cst }}</td>
+      <td class="font-monospace small">{{ item.c_class_trib }}</td>
+      {% if empresa.regime != "regular" %}<td class="font-monospace small">{{ item.c_ativ_sn }}</td>{% endif %}
+      <td>{% status_item item.status_classificacao %}
+        {% if item.aprovado_por %}<div class="small text-body-secondary">{{ item.aprovado_por }} em {{ item.aprovado_em|date:"d/m/Y" }}</div>{% endif %}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="8" class="text-body-secondary">Nenhum item aqui.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</form>
+{% endblock %}
