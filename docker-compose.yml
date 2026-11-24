@@ -1,0 +1,141 @@
+# Tributo360: um único compose para desenvolvimento, homologação e a VPS de produção.
+#
+#   cp .env.example .env   # e ajuste as senhas
+#   git submodule update --init
+#   docker compose up -d --build
+#   curl http://localhost/healthz
+#
+# Os motores da Receita não têm autenticação: ficam só na rede interna (sem `ports:`).
+
+x-django: &django
+  build: ./app
+  image: tributo360/django:local
+  env_file: .env
+  environment:
+    POSTGRES_HOST: postgres
+    REDIS_URL: redis://redis:6379/1
+    CELERY_BROKER_URL: redis://redis:6379/0
+    MOTOR_REGIME_REGULAR_URL: http://motor-regime-regular:8080
+    MOTOR_SIMPLES_URL: http://motor-simples:8082
+    MOTOR_DANFSE_URL: http://motor-danfse:8080
+    MOTOR_DANFSE_VERSAO: "1.0.0"
+  networks: [interna]
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    env_file: .env
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    networks: [interna]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    networks: [interna]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Roda uma vez a cada `up`: migrations e arquivos estáticos.
+  migrate:
+    <<: *django
+    command: ["sh", "-c", "python manage.py migrate --noinput && python manage.py collectstatic --noinput -v0"]
+    volumes:
+      - static:/app/staticfiles
+    restart: "no"
+    depends_on:
+      postgres: {condition: service_healthy}
+
+  django:
+    <<: *django
+    volumes:
+      - static:/app/staticfiles
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz', timeout=5)"]
+      interval: 15s
+      timeout: 6s
+      retries: 5
+      start_period: 20s
+
+  celery-worker:
+    <<: *django
+    command: ["celery", "-A", "config", "worker", "--loglevel=INFO", "--concurrency=2"]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+
+  celery-beat:
+    <<: *django
+    command: ["celery", "-A", "config", "beat", "--loglevel=INFO", "--schedule=/tmp/celerybeat-schedule"]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+
+  motor-regime-regular:
+    build:
+      context: .
+      dockerfile: docker/motores-java.Dockerfile
+      target: regime-regular
+    image: tributo360/motor-regime-regular:1.7.2
+    environment:
+      # Comparador de versão com a instalação online da Receita: sem rede, só gera aviso no log.
+      VERSAO_OFFLINE_URL: ${VERSAO_OFFLINE_URL:-https://piloto-cbs.tributos.gov.br/servico/calculadora-consumo/api/calculadora/dados-abertos/versao}
+    networks: [interna]
+    restart: unless-stopped
+    mem_limit: 1g
+
+  motor-simples:
+    build:
+      context: .
+      dockerfile: docker/motores-java.Dockerfile
+      target: simples
+    image: tributo360/motor-simples:1.0.2
+    networks: [interna]
+    restart: unless-stopped
+    mem_limit: 1g
+
+  motor-danfse:
+    # Dockerfile oficial do repositório da Receita.
+    build: ./engines/calculadora-rtc-gerador-danfse
+    image: tributo360/motor-danfse:1.0.0
+    networks: [interna]
+    restart: unless-stopped
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - static:/srv/static:ro
+    networks: [interna]
+    restart: unless-stopped
+    depends_on:
+      django: {condition: service_healthy}
+
+volumes:
+  postgres:
+  static:
+
+networks:
+  interna:
