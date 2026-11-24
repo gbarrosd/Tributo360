@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "empresas",
     "auditoria",
     "engines",
+    "simulacoes",
 ]
 
 MIDDLEWARE = [
@@ -166,6 +167,12 @@ REST_FRAMEWORK = {
 CELERY_BROKER_URL = env("CELERY_BROKER_URL", REDIS_URL or "redis://localhost:6379/0")
 CELERY_TASK_ALWAYS_EAGER = env_bool("CELERY_TASK_ALWAYS_EAGER", False)
 CELERY_TIMEZONE = TIME_ZONE
+CELERY_BEAT_SCHEDULE = {
+    # Mantém VersaoMotor em dia mesmo sem cálculos (painel de versões).
+    "registrar-versoes-motores": {"task": "engines.registrar_versoes", "schedule": 300.0},
+    # Barato quando nada mudou: só consulta /versao e sai se a base já foi copiada.
+    "sincronizar-tabelas-oficiais": {"task": "engines.sincronizar_tabelas", "schedule": 3600.0},
+}
 
 # --- Motores da Receita (rede interna do compose) ----------------------------------
 MOTORES = {
@@ -184,7 +191,14 @@ MOTORES = {
         "versao_fixa": env("MOTOR_DANFSE_VERSAO", ""),
     },
 }
-MOTORES_TIMEOUT = float(env("MOTORES_TIMEOUT", "2"))
+MOTORES_TIMEOUT = float(env("MOTORES_TIMEOUT", "2"))  # /healthz e painel de versões
+# Cálculos e demais chamadas (planejamento, seção 3): 5 s no total, 2 s para conectar.
+MOTORES_TIMEOUT_CALCULO = float(env("MOTORES_TIMEOUT_CALCULO", "5"))
+MOTORES_TIMEOUT_CONEXAO = float(env("MOTORES_TIMEOUT_CONEXAO", "2"))
+# Circuit breaker: N falhas dentro da janela abrem o circuito por alguns segundos.
+MOTORES_CIRCUITO_FALHAS = int(env("MOTORES_CIRCUITO_FALHAS", "5"))
+MOTORES_CIRCUITO_JANELA_SEGUNDOS = int(env("MOTORES_CIRCUITO_JANELA_SEGUNDOS", "60"))
+MOTORES_CIRCUITO_ABERTO_SEGUNDOS = int(env("MOTORES_CIRCUITO_ABERTO_SEGUNDOS", "30"))
 MOTORES_VERSAO_CACHE_SEGUNDOS = int(env("MOTORES_VERSAO_CACHE_SEGUNDOS", "300"))
 
 # --- Planos (limites provisórios até a Fase 6 definir cobrança) ----------------------
