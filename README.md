@@ -2,7 +2,7 @@
 
 Plataforma SaaS para escritórios contábeis voltada à Reforma Tributária do Consumo (CBS, IBS e IS).
 
-Status: **Fase 1 (fundação)**. Descoberta e planejamento em `docs/descoberta.md` e `docs/planejamento.md`.
+Status: **Fase 2 (motores)**. Descoberta e planejamento em `docs/descoberta.md` e `docs/planejamento.md`.
 
 ## Estrutura
 
@@ -13,10 +13,12 @@ app/                 Django 5.2 + DRF (o produto)
   contas/            usuário (login por e-mail), escritório, assinatura, membership, papéis, convites
   empresas/          carteira de empresas do escritório
   auditoria/         registro de criação/edição/remoção com antes e depois
-  engines/           app Django dos motores (por enquanto só a leitura de versão; clientes na Fase 2)
+  engines/           clientes dos motores, contratos internos, versões, alíquotas nominais, tabelas oficiais
+  simulacoes/        primeiros cálculos (regime regular e Simples) gravados com payload, resposta e versão
 engines/             motores da Receita como submódulos git, presos nas tags oficiais
 docker/              Dockerfile dos motores Java e configuração do nginx
 docker-compose.yml   mesmo compose para dev, homologação e a VPS
+docker-compose.contrato.yml  só para testes de contrato: publica os motores em 127.0.0.1
 ```
 
 ## Subir tudo com Docker
@@ -56,7 +58,7 @@ ruff check . && ruff format --check .
 - `core/tests/test_cross_tenant.py` tenta ler, editar e apagar dados do escritório B a partir do A em
   todas as rotas, e falha se um endpoint novo não for incluído na matriz.
 
-## API (Fase 1)
+## API
 
 | Rota | O que faz |
 |---|---|
@@ -71,5 +73,55 @@ ruff check . && ruff format --check .
 | `/api/convites/` | Convida por e-mail, lista e cancela pendentes |
 | `GET /api/convites/consultar/`, `POST /api/convites/aceitar/` | Tela e aceite do convite |
 | `/api/empresas/` | CRUD de empresas (DELETE inativa) |
+| `POST /api/simulacoes/regime-regular/` | Calcula uma operação do regime regular e grava a simulação |
+| `POST /api/simulacoes/simples/` | Calcula no Simples com as alíquotas efetivas informadas (D3) |
+| `GET /api/simulacoes/`, `/api/simulacoes/{id}/` | Histórico (filtros `empresa`, `tipo`) e detalhe com itens, payload, resposta e versão |
+| `GET /api/motores/versoes/` | Painel de versões: o que roda agora, histórico e última sincronização de tabelas |
+| `GET /api/aliquotas-nominais/vigentes/?data=&municipio=` | Alíquotas que a tabela do Tributo360 propõe (D2) |
 
 Papéis e permissões seguem a matriz da seção 2.3 do planejamento (`app/contas/papeis.py`).
+
+## Motores (Fase 2)
+
+O resto do código nunca vê o JSON dos motores. `app/engines/contratos.py` define os objetos internos
+(`OperacaoRegular`, `OperacaoSimples`, `ResultadoCalculo`...) e cada cliente em `app/engines/clientes/`
+traduz para o formato do motor e de volta.
+
+- **Endpoints usados**: `observabilidade/regime-geral` (erro por item, nunca o `/regime-geral`) e
+  `observabilidade/simples-nacional/nao-assistido` (nunca o obsoleto), `xml/validate`, dados abertos,
+  `/api/danfse` e os de versão.
+- **Rede**: timeout de 5 s (2 s para conectar), uma nova tentativa só em erro de rede/5xx e circuit
+  breaker por motor no cache (5 falhas em 60 s abrem por 30 s). Ajustável por `MOTORES_*` no ambiente.
+  Motor fora do ar responde 503 na API; operação recusada inteira responde 422 com os erros do motor.
+- **Versão**: toda `Simulacao` aponta para uma `VersaoMotor`, lida dos headers da própria resposta
+  (`X-CALC-APP-VERSION`, `X-CALC-DB-VERSION`) e completada com a data da base por `GET /versao`.
+  O worker do Celery registra as versões ao subir e o beat repete a cada 5 min
+  (`python manage.py registrar_versoes_motores` faz o mesmo à mão).
+- **Alíquotas nominais (D2)**: tabela global `AliquotaNominal` por esfera (União, UF, município) e
+  vigência, cadastrada no admin. Não aceita registro sem fonte (também no banco), não se edita nem
+  se apaga: corrige-se com registro novo, e vale o último. De 2027 em diante a simulação usa a tabela
+  como padrão e o contador pode editar; cada item guarda a origem de cada alíquota
+  (`tabela_tributo360`, `editada_pelo_usuario` com o valor anterior, ou `motor_2026`). Sem alíquota na
+  tabela nem na requisição, a API responde 400 antes de chamar o motor.
+- **Simples (D3)**: por enquanto as alíquotas efetivas vão na própria requisição; o cadastro por
+  empresa e período (`AliquotaEfetivaSN`) é a Fase 3.
+- **Tabelas oficiais**: CST, cClassTrib, NCM e NBS copiadas para `ItemTabela` pelo beat (de hora em
+  hora; só baixa quando a `versao_db` muda). Nunca apaga: conteúdo novo vira registro novo e o que
+  saiu da tabela oficial só perde `vigente`. À mão: `python manage.py sincronizar_tabelas [--forcar]`.
+
+### Testes de contrato
+
+Os testes comuns usam respostas reais gravadas dos motores (`app/engines/tests/respostas/`). Os de
+contrato chamam os motores de verdade, com casos dourados (inclusive os exemplos oficiais), e rodam no
+job `contrato` do CI. Na sua máquina:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.contrato.yml up -d --build --wait \
+  motor-regime-regular motor-simples motor-danfse
+cd app
+MOTORES_CONTRATO=1 MOTOR_REGIME_REGULAR_URL=http://localhost:18080 MOTOR_SIMPLES_URL=http://localhost:18082 \
+  MOTOR_DANFSE_URL=http://localhost:18090 MOTOR_DANFSE_VERSAO=1.0.0 pytest -m contrato
+```
+
+Ao trocar a tag de um motor, um caso dourado que quebra mostra exatamente o que mudou no cálculo.
+Atualize `VERSAO_RR`/`VERSAO_SN` e os valores esperados só depois de revisar a diferença.

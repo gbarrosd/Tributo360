@@ -20,7 +20,7 @@ METODOS_ESCRITA = ["put", "patch", "delete"]
 
 
 @pytest.fixture
-def cenario(criar_escritorio, criar_empresa, adicionar_membro, cliente_de):
+def cenario(criar_escritorio, criar_empresa, adicionar_membro, cliente_de, criar_simulacao):
     escritorio_a, _, dono_a = criar_escritorio("Escritório A")
     escritorio_b, _, dono_b = criar_escritorio("Escritório B")
     empresa_a = criar_empresa(escritorio_a, razao_social="Empresa do A")
@@ -33,7 +33,12 @@ def cenario(criar_escritorio, criar_empresa, adicionar_membro, cliente_de):
         "cliente_a": cliente_de(dono_a),
         "dono_a": dono_a,
         "empresa_a": empresa_a,
-        "objetos_b": {"empresa": empresa_b, "membro": membro_b, "convite": convite_b},
+        "objetos_b": {
+            "empresa": empresa_b,
+            "membro": membro_b,
+            "convite": convite_b,
+            "simulacao": criar_simulacao(empresa_b),
+        },
         "escritorio_b": escritorio_b,
         "dono_b": dono_b,
     }
@@ -53,6 +58,8 @@ CORPOS = {
     },
     "membro": {"papel": "leitura", "acesso_todas_empresas": True},
     "convite": {"email": "x@x.com.br", "papel": "leitura"},
+    # Somente leitura: PUT/PATCH/DELETE têm de responder 405 (e não existir no Allow).
+    "simulacao": {"rotulo": "Invadida"},
 }
 
 

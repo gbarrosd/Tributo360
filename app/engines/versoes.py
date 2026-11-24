@@ -1,7 +1,7 @@
-"""Versão de cada motor, lida dos próprios motores.
+"""Versão de cada motor para o `/healthz` e o painel de versões.
 
-Os clientes completos (cálculo, validação de XML, DANFSe) entram na Fase 2. Aqui só o necessário para o
-`/healthz` e para o painel de versões.
+Leitura leve e tolerante a falhas (timeout curto, sem circuito). Os clientes completos ficam em
+`engines/clientes/`; o registro em banco (`VersaoMotor`) fica em `engines/registro.py`.
 """
 
 import httpx

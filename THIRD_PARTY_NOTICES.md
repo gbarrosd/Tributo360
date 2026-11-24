@@ -13,4 +13,8 @@ O texto integral de cada licença está no arquivo `LICENSE` do respectivo subm�
 desses motores (Java: majoritariamente Apache 2.0; Go: Apache 2.0 e MIT, incluindo a biblioteca de PDF
 `github.com/carlos7ags/folio`, Apache 2.0) estão levantadas em `docs/descoberta.md`, seção 6.
 
+Dados de teste: `app/engines/tests/respostas/` guarda entradas e respostas gravadas dos motores (exemplos
+oficiais do `docs/exemplos.md` e do OpenAPI de cada um) e `nfse_autorizada_teste.xml`, copiado dos testes
+do gerador DANFSe. Todos MIT, Copyright 2026 Receita Federal do Brasil.
+
 Pendente antes do lançamento: validação jurídica e página "Componentes de código aberto" no produto.

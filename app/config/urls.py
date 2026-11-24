@@ -5,11 +5,14 @@ from rest_framework.routers import DefaultRouter
 from contas import views as contas
 from core.views import healthz
 from empresas.views import EmpresaViewSet
+from engines.views import AliquotasVigentesView, VersoesMotoresView
+from simulacoes.views import SimulacaoViewSet
 
 router = DefaultRouter(trailing_slash=True)
 router.register("empresas", EmpresaViewSet, basename="empresa")
 router.register("membros", contas.MembroViewSet, basename="membro")
 router.register("convites", contas.ConviteViewSet, basename="convite")
+router.register("simulacoes", SimulacaoViewSet, basename="simulacao")
 
 auth = [
     path("csrf/", contas.CsrfView.as_view(), name="auth-csrf"),
@@ -28,6 +31,8 @@ api = [
     path("escritorio/", contas.EscritorioAtualView.as_view(), name="escritorio-atual"),
     path("convites/consultar/", contas.ConsultarConviteView.as_view(), name="convite-consultar"),
     path("convites/aceitar/", contas.AceitarConviteView.as_view(), name="convite-aceitar"),
+    path("motores/versoes/", VersoesMotoresView.as_view(), name="motores-versoes"),
+    path("aliquotas-nominais/vigentes/", AliquotasVigentesView.as_view(), name="aliquotas-vigentes"),
     path("", include(router.urls)),
 ]
 
