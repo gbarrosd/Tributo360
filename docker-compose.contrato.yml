@@ -1,0 +1,21 @@
+# Sobreposição só para os testes de contrato (CI e máquina de quem desenvolve).
+#
+# Publica os motores em 127.0.0.1 para o pytest rodar fora do compose. Nunca use em produção:
+# os motores não têm autenticação e, no compose normal, ficam só na rede interna.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.contrato.yml up -d --build --wait \
+#     motor-regime-regular motor-simples motor-danfse
+#   cd app && MOTORES_CONTRATO=1 MOTOR_REGIME_REGULAR_URL=http://localhost:18080 \
+#     MOTOR_SIMPLES_URL=http://localhost:18082 MOTOR_DANFSE_URL=http://localhost:18090 \
+#     MOTOR_DANFSE_VERSAO=1.0.0 pytest -m contrato
+
+services:
+  motor-regime-regular:
+    ports: ["127.0.0.1:18080:8080"]
+    environment:
+      # Sem consulta ao piloto da Receita na subida: o teste não depende de rede externa.
+      VERSAO_OFFLINE_URL: http://127.0.0.1:9/indisponivel
+  motor-simples:
+    ports: ["127.0.0.1:18082:8082"]
+  motor-danfse:
+    ports: ["127.0.0.1:18090:8080"]
