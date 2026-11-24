@@ -42,7 +42,7 @@ def _violacoes(caminho, modelos):
 
 
 def test_existem_modelos_de_tenant():
-    assert {"Empresa", "Membership", "Convite", "Auditoria"} <= _modelos_de_tenant()
+    assert {"Empresa", "Membership", "Convite", "Auditoria", "Simulacao", "SimulacaoItem"} <= _modelos_de_tenant()
 
 
 def test_views_e_serializers_nao_consultam_sem_escopo():
@@ -61,8 +61,17 @@ def test_detector_pega_violacao(tmp_path, settings):
 
 def test_todo_modelo_de_negocio_e_tenant():
     """Toda tabela dos apps do produto herda de TenantModel, salvo as globais listadas aqui."""
-    globais = {"Usuario", "Escritorio", "Assinatura"}
-    apps_do_produto = {"contas", "empresas", "auditoria"}
+    # Globais: contas e as tabelas de referência dos motores (versões, alíquotas nominais, tabelas oficiais).
+    globais = {
+        "Usuario",
+        "Escritorio",
+        "Assinatura",
+        "VersaoMotor",
+        "AliquotaNominal",
+        "SincronizacaoTabela",
+        "ItemTabela",
+    }
+    apps_do_produto = {"contas", "empresas", "auditoria", "engines", "simulacoes"}
     fora = [
         m.__name__
         for m in apps.get_models()
