@@ -6,4 +6,4 @@ extend-exclude = ["*/migrations/*"]
 select = ["E", "F", "W", "I", "B", "UP"]
 
 [lint.isort]
-known-first-party = ["config", "core", "contas", "empresas", "auditoria", "engines"]
+known-first-party = ["config", "core", "contas", "empresas", "auditoria", "engines", "simulacoes"]
