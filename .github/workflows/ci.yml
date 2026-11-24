@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  django:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: tributo360
+          POSTGRES_USER: tributo360
+          POSTGRES_PASSWORD: tributo360
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U tributo360" --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      DJANGO_DEBUG: "1"
+      POSTGRES_HOST: localhost
+      POSTGRES_DB: tributo360
+      POSTGRES_USER: tributo360
+      POSTGRES_PASSWORD: tributo360
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: app/requirements*.txt
+      - run: pip install -r requirements-dev.txt
+      - name: Lint
+        run: ruff check . && ruff format --check .
+      - name: Migrations em dia
+        run: python manage.py makemigrations --check --dry-run
+      - name: Testes (inclui suíte cross-tenant e teste de arquitetura)
+        run: pytest
