@@ -11,20 +11,25 @@ import uuid
 import pytest
 from django.urls import reverse
 
+from catalogo.models import ItemCatalogo
 from config.urls import router
 from contas.models import Convite
 from contas.papeis import Papel
 from empresas.models import Empresa
+from simulacoes.models import AliquotaEfetivaSN
 
 METODOS_ESCRITA = ["put", "patch", "delete"]
 
 
 @pytest.fixture
-def cenario(criar_escritorio, criar_empresa, adicionar_membro, cliente_de, criar_simulacao):
+def cenario(
+    criar_escritorio, criar_empresa, adicionar_membro, cliente_de, criar_simulacao, criar_item, criar_aliquotas_sn
+):
     escritorio_a, _, dono_a = criar_escritorio("Escritório A")
     escritorio_b, _, dono_b = criar_escritorio("Escritório B")
     empresa_a = criar_empresa(escritorio_a, razao_social="Empresa do A")
     empresa_b = criar_empresa(escritorio_b, razao_social="Empresa do B")
+    simples_b = criar_empresa(escritorio_b, razao_social="Simples do B", regime="simples", crt=1)
     membro_b = adicionar_membro(escritorio_b, Papel.CONTADOR)
     convite_b = Convite(escritorio=escritorio_b, email="convidado@b.com.br", papel=Papel.CONTADOR)
     convite_b.gerar_token()
@@ -38,7 +43,11 @@ def cenario(criar_escritorio, criar_empresa, adicionar_membro, cliente_de, criar
             "membro": membro_b,
             "convite": convite_b,
             "simulacao": criar_simulacao(empresa_b),
+            "item-catalogo": criar_item(empresa_b, codigo="DO-B"),
+            "aliquota-simples": criar_aliquotas_sn(simples_b),
         },
+        "empresa_b": empresa_b,
+        "simples_b": simples_b,
         "escritorio_b": escritorio_b,
         "dono_b": dono_b,
     }
@@ -60,6 +69,8 @@ CORPOS = {
     "convite": {"email": "x@x.com.br", "papel": "leitura"},
     # Somente leitura: PUT/PATCH/DELETE têm de responder 405 (e não existir no Allow).
     "simulacao": {"rotulo": "Invadida"},
+    "item-catalogo": {"tipo": "produto", "codigo": "X", "descricao": "Invadido", "c_class_trib": "000001"},
+    "aliquota-simples": {"periodo": "2026-12", "fator_r": True, "anexos": {"I": {"cbs": "9", "ibs": "9"}}},
 }
 
 
@@ -100,6 +111,30 @@ def test_objetos_de_b_continuam_intactos(cenario):
     assert membro_b.papel == Papel.CONTADOR
     convite_b = Convite.objects.get(pk=cenario["objetos_b"]["convite"].pk)
     assert convite_b.cancelado_em is None
+    item_b = ItemCatalogo.objects.get(pk=cenario["objetos_b"]["item-catalogo"].pk)
+    assert item_b.ativo is True and item_b.descricao == "Cerveja lata 350 ml"
+    aliquota_b = AliquotaEfetivaSN.objects.get(pk=cenario["objetos_b"]["aliquota-simples"].pk)
+    assert aliquota_b.fator_r is False and aliquota_b.anexos["I"]["cbs"] == "0.52"
+
+
+def test_nao_cria_item_nem_aliquota_em_empresa_de_b(cenario):
+    cliente = cenario["cliente_a"]
+    corpo_item = {**CORPOS["item-catalogo"], "empresa": str(cenario["empresa_b"].pk)}
+    assert cliente.post(reverse("item-catalogo-list"), corpo_item, format="json").status_code == 400
+    corpo_sn = {**CORPOS["aliquota-simples"], "empresa": str(cenario["simples_b"].pk)}
+    assert cliente.post(reverse("aliquota-simples-list"), corpo_sn, format="json").status_code == 400
+    assert not ItemCatalogo.objects.filter(codigo="X").exists()
+
+
+def test_simulacao_nao_usa_item_do_catalogo_de_b(cenario):
+    corpo = {
+        "empresa": str(cenario["empresa_a"].pk),
+        "data_fato_gerador": "2026-06-10T10:00:00-03:00",
+        "itens": [{"item_catalogo": str(cenario["objetos_b"]["item-catalogo"].pk), "base_calculo": "100.00"}],
+    }
+    resposta = cenario["cliente_a"].post("/api/simulacoes/regime-regular/", corpo, format="json")
+    assert resposta.status_code == 400
+    assert "item_catalogo" in str(resposta.json())
 
 
 @pytest.mark.parametrize("basename", sorted(CORPOS))

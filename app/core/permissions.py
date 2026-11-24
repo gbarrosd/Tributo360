@@ -6,7 +6,10 @@ from contas.papeis import Acao, pode
 class TemEscritorio(BasePermission):
     """Exige usuário autenticado com uma membership ativa resolvida para a requisição."""
 
-    message = "Selecione um escritório ao qual você tenha acesso (cabeçalho X-Escritorio)."
+    message = (
+        "Selecione um escritório ao qual você tenha acesso: pelo navegador, em /escritorios/; "
+        "pela API, com POST /api/auth/escritorio/ ou o cabeçalho X-Escritorio."
+    )
 
     def has_permission(self, request, view):
         return bool(request.user and request.user.is_authenticated and getattr(request, "membership", None))

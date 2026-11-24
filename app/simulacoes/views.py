@@ -7,8 +7,9 @@ from contas.papeis import Acao
 from core.permissions import PapelPermite, TemEscritorio
 
 from . import servicos
-from .models import Simulacao
+from .models import AliquotaEfetivaSN, Simulacao
 from .serializers import (
+    AliquotaEfetivaSNSerializer,
     SimulacaoDetalheSerializer,
     SimulacaoRegularSerializer,
     SimulacaoResumoSerializer,
@@ -31,7 +32,7 @@ class SimulacaoViewSet(viewsets.ReadOnlyModelViewSet):
     }
 
     def get_queryset(self):
-        qs = Simulacao.tenant(self.request).select_related("versao_motor")
+        qs = Simulacao.tenant(self.request).select_related("versao_motor", "empresa")
         params = self.request.query_params
         if empresa := params.get("empresa"):
             qs = qs.filter(empresa_id=empresa)
@@ -66,3 +67,45 @@ class SimulacaoViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=["post"])
     def simples(self, request):
         return self._calcular(request, servicos.simular_simples)
+
+
+class AliquotaEfetivaSNViewSet(viewsets.ModelViewSet):
+    """Alíquotas efetivas do Simples por empresa e mês (D3), usadas por padrão na simulação do Simples."""
+
+    serializer_class = AliquotaEfetivaSNSerializer
+    permission_classes = [IsAuthenticated, TemEscritorio, PapelPermite]
+    acoes = {
+        "list": Acao.VER,
+        "retrieve": Acao.VER,
+        "create": Acao.INFORMAR_ALIQUOTAS_SN,
+        "update": Acao.INFORMAR_ALIQUOTAS_SN,
+        "partial_update": Acao.INFORMAR_ALIQUOTAS_SN,
+        "destroy": Acao.INFORMAR_ALIQUOTAS_SN,
+    }
+
+    def get_queryset(self):
+        qs = AliquotaEfetivaSN.tenant(self.request).select_related("informado_por")
+        if empresa := self.request.query_params.get("empresa"):
+            qs = qs.filter(empresa_id=empresa)
+        return qs
+
+    def _salvar(self, serializer):
+        dados = {
+            "periodo": serializer.instance.periodo if serializer.instance else None,
+            "fator_r": getattr(serializer.instance, "fator_r", False),
+            "impedimento_sublimite": getattr(serializer.instance, "impedimento_sublimite", False),
+            "anexos": servicos.efetivas_do_cadastro(serializer.instance)["anexos"] if serializer.instance else {},
+            "observacao": getattr(serializer.instance, "observacao", ""),
+            **serializer.validated_data,
+        }
+        empresa = dados.pop("empresa", None) or serializer.instance.empresa
+        serializer.instance = servicos.salvar_aliquotas_sn(self.request, empresa, dados, serializer.instance)
+
+    def perform_create(self, serializer):
+        self._salvar(serializer)
+
+    def perform_update(self, serializer):
+        self._salvar(serializer)
+
+    def perform_destroy(self, instance):
+        servicos.remover_aliquotas_sn(self.request, instance)

@@ -52,6 +52,9 @@ class SimulacaoItem(TenantModel):
     campo_empresa = "simulacao__empresa"
 
     simulacao = models.ForeignKey(Simulacao, on_delete=models.CASCADE, related_name="itens")
+    item_catalogo = models.ForeignKey(
+        "catalogo.ItemCatalogo", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
     numero = models.PositiveIntegerField()
     estado = models.CharField(max_length=30, help_text="estadoItem devolvido pelo motor.")
     ncm = models.CharField(max_length=8, blank=True)
@@ -76,3 +79,40 @@ class SimulacaoItem(TenantModel):
 
     def __str__(self):
         return f"Item {self.numero} ({self.estado})"
+
+
+class AliquotaEfetivaSN(TenantModel):
+    """Alíquotas efetivas de CBS/IBS do Simples de uma empresa num período (decisão D3).
+
+    O contador copia do PGDAS-D até existir a integração oficial. A simulação do Simples usa o
+    cadastro do mês da operação; sem ele, a tela orienta o cadastro e o motor não é chamado.
+
+    `anexos`: ``{"I": {"cbs": "0.5", "ibs": "0.2"}, "III": {..., "sem_redistribuicao_iss": {...}}}``,
+    valores em % como texto (Decimal sem perda).
+    """
+
+    campo_empresa = "empresa"
+
+    empresa = models.ForeignKey("empresas.Empresa", on_delete=models.PROTECT, related_name="aliquotas_simples")
+    periodo = models.DateField(help_text="Primeiro dia do mês de apuração.")
+    fator_r = models.BooleanField("fator R", default=False)
+    impedimento_sublimite = models.BooleanField(default=False)
+    anexos = models.JSONField(encoder=DjangoJSONEncoder)
+    observacao = models.CharField(max_length=300, blank=True)
+    informado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+
+    class Meta:
+        verbose_name = "alíquotas efetivas do Simples"
+        verbose_name_plural = "alíquotas efetivas do Simples"
+        ordering = ["empresa", "-periodo"]
+        constraints = [
+            models.UniqueConstraint(fields=["empresa", "periodo"], name="aliquota_sn_unica_por_periodo"),
+            models.CheckConstraint(condition=models.Q(periodo__day=1), name="aliquota_sn_periodo_primeiro_dia"),
+        ]
+
+    def __str__(self):
+        return f"{self.empresa} · {self.periodo:%m/%Y}"
+
+    @property
+    def periodo_texto(self):
+        return f"{self.periodo:%m/%Y}"

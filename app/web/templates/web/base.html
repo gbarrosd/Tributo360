@@ -1,0 +1,70 @@
+{% load static %}<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Tributo360{% endblock %} · Tributo360</title>
+  <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
+  <link rel="stylesheet" href="{% static 'web/app.css' %}">
+</head>
+<body>
+<nav class="navbar navbar-expand-lg bg-body-tertiary border-bottom mb-4">
+  <div class="container-xl">
+    <a class="navbar-brand fw-semibold" href="{% url 'web:inicio' %}">Tributo360</a>
+    {% if user.is_authenticated %}
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu" aria-label="Menu">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="menu">
+      {% if membership_ativa %}
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item"><a class="nav-link" href="{% url 'web:empresas' %}">Empresas</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'web:historico' %}">Simulações</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'web:motores' %}">Motores</a></li>
+      </ul>
+      {% else %}<div class="me-auto"></div>{% endif %}
+      <ul class="navbar-nav">
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+            {% if membership_ativa %}{{ membership_ativa.escritorio.razao_social }}
+            <span class="badge text-bg-secondary">{{ membership_ativa.get_papel_display }}</span>{% else %}Escolher escritório{% endif %}
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end">
+            {% for escritorio in escritorios_do_usuario %}
+            <li>
+              <form method="post" action="{% url 'web:escritorios' %}">{% csrf_token %}
+                <input type="hidden" name="escritorio" value="{{ escritorio.pk }}">
+                <button class="dropdown-item{% if membership_ativa.escritorio_id == escritorio.pk %} active{% endif %}">{{ escritorio.razao_social }}</button>
+              </form>
+            </li>
+            {% endfor %}
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{% url 'web:escritorios' %}">Todos os escritórios</a></li>
+            {% if user.is_staff %}<li><a class="dropdown-item" href="{% url 'admin:index' %}">Admin</a></li>{% endif %}
+            <li><a class="dropdown-item" href="/api/">API</a></li>
+            <li>
+              <form method="post" action="{% url 'web:sair' %}">{% csrf_token %}
+                <button class="dropdown-item">Sair ({{ user.email }})</button>
+              </form>
+            </li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+</nav>
+<main class="container-xl pb-5">
+  {% for mensagem in messages %}
+  <div class="alert alert-{% if mensagem.tags == 'error' %}danger{% else %}{{ mensagem.tags }}{% endif %} alert-dismissible fade show" role="alert">
+    {{ mensagem }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+  </div>
+  {% endfor %}
+  {% block conteudo %}{% endblock %}
+</main>
+<script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
+<script src="{% static 'web/app.js' %}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

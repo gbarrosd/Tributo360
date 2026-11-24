@@ -7,13 +7,14 @@ import pytest
 from django.core.cache import cache
 from rest_framework.test import APIClient
 
+from catalogo.models import ItemCatalogo
 from contas.models import Assinatura, Escritorio, Membership, Usuario
 from contas.papeis import Papel
 from core.validators import _PESOS_CNPJ_1, _PESOS_CNPJ_2, _dv_mod11
 from empresas.models import Empresa
 from engines.http import ClienteMotor
 from engines.models import VersaoMotor
-from simulacoes.models import Simulacao
+from simulacoes.models import AliquotaEfetivaSN, Simulacao
 
 SENHA = "SenhaForte123"
 
@@ -132,6 +133,41 @@ def criar_simulacao(versao_motor):
         }
         dados.update(extra)
         return Simulacao.objects.create(**dados)
+
+    return _criar
+
+
+@pytest.fixture
+def criar_item(db):
+    contador = itertools.count(1)
+
+    def _criar(empresa, **extra):
+        dados = {
+            "tipo": ItemCatalogo.Tipo.PRODUTO,
+            "codigo": f"ITEM-{next(contador)}",
+            "descricao": "Cerveja lata 350 ml",
+            "ncm": "22030000",
+            "cst": "000",
+            "c_class_trib": "000001",
+        }
+        dados.update(extra)
+        return ItemCatalogo.objects.create(escritorio=empresa.escritorio, empresa=empresa, **dados)
+
+    return _criar
+
+
+ANEXOS_SN_TESTE = {
+    "I": {"cbs": "0.52", "ibs": "0.13"},
+    "III": {"cbs": "1.10", "ibs": "0.30", "sem_redistribuicao_iss": {"cbs": "1.40", "ibs": "0.40"}},
+}
+
+
+@pytest.fixture
+def criar_aliquotas_sn(db):
+    def _criar(empresa, periodo="2026-11-01", **extra):
+        dados = {"periodo": periodo, "fator_r": False, "anexos": ANEXOS_SN_TESTE}
+        dados.update(extra)
+        return AliquotaEfetivaSN.objects.create(escritorio=empresa.escritorio, empresa=empresa, **dados)
 
     return _criar
 

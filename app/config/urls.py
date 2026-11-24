@@ -2,17 +2,20 @@ from django.contrib import admin
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
+from catalogo.views import ItemCatalogoViewSet
 from contas import views as contas
 from core.views import healthz
 from empresas.views import EmpresaViewSet
 from engines.views import AliquotasVigentesView, VersoesMotoresView
-from simulacoes.views import SimulacaoViewSet
+from simulacoes.views import AliquotaEfetivaSNViewSet, SimulacaoViewSet
 
 router = DefaultRouter(trailing_slash=True)
 router.register("empresas", EmpresaViewSet, basename="empresa")
 router.register("membros", contas.MembroViewSet, basename="membro")
 router.register("convites", contas.ConviteViewSet, basename="convite")
 router.register("simulacoes", SimulacaoViewSet, basename="simulacao")
+router.register("itens", ItemCatalogoViewSet, basename="item-catalogo")
+router.register("aliquotas-simples", AliquotaEfetivaSNViewSet, basename="aliquota-simples")
 
 auth = [
     path("csrf/", contas.CsrfView.as_view(), name="auth-csrf"),
@@ -40,4 +43,5 @@ urlpatterns = [
     path("healthz", healthz, name="healthz"),
     path("admin/", admin.site.urls),
     path("api/", include(api)),
+    path("", include("web.urls")),
 ]

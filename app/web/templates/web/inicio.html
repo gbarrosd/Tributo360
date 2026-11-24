@@ -1,0 +1,33 @@
+{% extends "web/base.html" %}{% load tributo %}
+{% block titulo %}Início{% endblock %}
+{% block conteudo %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0">{{ membership_ativa.escritorio.razao_social }}</h1>
+  {% if pode.editar_empresas %}<a class="btn btn-primary" href="{% url 'web:empresa-nova' %}">Nova empresa</a>{% endif %}
+</div>
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between"><span>Empresas ativas</span><span class="badge text-bg-secondary">{{ total_empresas }}</span></div>
+      <div class="list-group list-group-flush">
+        {% for empresa in empresas %}
+        <a class="list-group-item list-group-item-action d-flex justify-content-between" href="{% url 'web:empresa' empresa.pk %}">
+          <span>{{ empresa.razao_social }}</span><span class="small text-body-secondary">{{ empresa.get_regime_display }}</span>
+        </a>
+        {% empty %}
+        <div class="list-group-item text-body-secondary">Nenhuma empresa ainda.
+          {% if pode.editar_empresas %}<a href="{% url 'web:empresa-nova' %}">Cadastre a primeira</a>.{% endif %}</div>
+        {% endfor %}
+      </div>
+      {% if total_empresas > 8 %}<div class="card-footer"><a href="{% url 'web:empresas' %}">Ver todas</a></div>{% endif %}
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="card h-100">
+      <div class="card-header">Simulações recentes</div>
+      {% include "web/simulacoes/_tabela.html" with simulacoes=recentes %}
+      <div class="card-footer"><a href="{% url 'web:historico' %}">Histórico completo</a></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

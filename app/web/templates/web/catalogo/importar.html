@@ -1,0 +1,39 @@
+{% extends "web/base.html" %}
+{% block titulo %}Importar planilha{% endblock %}
+{% block conteudo %}
+<nav class="small mb-2"><a href="{% url 'web:empresa' empresa.pk %}">{{ empresa.razao_social }}</a> › <a href="{% url 'web:catalogo' empresa.pk %}">Catálogo</a></nav>
+<h1 class="h4 mb-3">Importar planilha de produtos e serviços</h1>
+{% if resumo %}
+<div class="alert alert-{% if resumo.revisar or resumo.ignoradas %}warning{% else %}success{% endif %}">
+  <div class="fw-semibold">{{ resumo.arquivo }}: {{ resumo.linhas }} linha(s) lida(s).</div>
+  {{ resumo.criados }} criado(s), {{ resumo.atualizados }} atualizado(s), {{ resumo.sem_mudanca }} sem mudança.
+  {% if resumo.revisar %}<strong>{{ resumo.revisar }} para revisar</strong>.{% endif %}
+  {% if resumo.motor %}<div class="small">Conferido com {{ resumo.motor }}.</div>{% endif %}
+  {% if resumo.motor_indisponivel %}<div class="small">O motor estava indisponível: os itens passaram só pelas validações locais. Use "Validar de novo" depois.</div>{% endif %}
+  {% if resumo.ignoradas %}
+  <div class="mt-2 small">Linhas ignoradas:</div>
+  <ul class="small mb-0">{% for linha in resumo.ignoradas %}<li>Linha {{ linha.linha }}: {{ linha.erro }}</li>{% endfor %}</ul>
+  {% endif %}
+  <div class="mt-2"><a class="btn btn-sm btn-primary" href="{% url 'web:catalogo' empresa.pk %}?status=fila">Ver fila de pendentes</a></div>
+</div>
+{% endif %}
+<div class="row g-4">
+  <div class="col-lg-6">
+    <form method="post" enctype="multipart/form-data" class="card card-body" novalidate>{% csrf_token %}
+      {% include "web/_erros_form.html" %}
+      {% include "web/_campo.html" with campo=form.arquivo %}
+      <button class="btn btn-primary">Importar e validar</button>
+    </form>
+  </div>
+  <div class="col-lg-6 small">
+    <p>A primeira linha tem os nomes das colunas. <a href="{% url 'web:catalogo-modelo' %}">Baixe o modelo em CSV</a>.</p>
+    <ul>
+      <li><strong>codigo</strong>, <strong>descricao</strong> e <strong>cclasstrib</strong> são obrigatórios.</li>
+      <li><strong>tipo</strong>: produto ou servico (sem a coluna, vale NBS = serviço, NCM = produto).</li>
+      <li>Pontos e traços em NCM/NBS são ignorados (2203.00.00 vira 22030000).</li>
+      <li>Código interno que já existe é atualizado; se a classificação mudar, o item volta para pendente.</li>
+      <li>Linha com classificação errada é importada e vai para <strong>revisar</strong>, com o erro do motor.</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

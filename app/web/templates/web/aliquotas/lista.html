@@ -1,0 +1,30 @@
+{% extends "web/base.html" %}{% load tributo %}
+{% block titulo %}Alíquotas do Simples · {{ empresa.razao_social }}{% endblock %}
+{% block conteudo %}
+<nav class="small mb-2"><a href="{% url 'web:empresas' %}">Empresas</a> › <a href="{% url 'web:empresa' empresa.pk %}">{{ empresa.razao_social }}</a></nav>
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <h1 class="h4 mb-0">Alíquotas efetivas do Simples</h1>
+  {% if pode.informar_aliquotas_sn %}<a class="btn btn-primary" href="{% url 'web:aliquotas-nova' empresa.pk %}">Cadastrar período</a>{% endif %}
+</div>
+<p class="text-body-secondary small">Copie do PGDAS-D do mês as alíquotas efetivas de CBS e IBS de cada anexo. Toda simulação do
+  Simples nesse mês usa este cadastro, e a simulação guarda os valores que usou.</p>
+<div class="table-responsive">
+<table class="table table-sm align-middle">
+  <thead><tr><th>Mês</th><th>Anexos (CBS / IBS)</th><th>Fator R</th><th>Sublimite</th><th>Informado por</th><th></th></tr></thead>
+  <tbody>
+  {% for cadastro in cadastros %}
+  <tr>
+    <td class="fw-semibold">{{ cadastro.periodo|date:"m/Y" }}</td>
+    <td class="small">{% for anexo, par in cadastro.anexos.items %}<span class="me-3">{{ anexo }}: {{ par.cbs|pct }} / {{ par.ibs|pct }}</span>{% endfor %}</td>
+    <td>{{ cadastro.fator_r|yesno:"sim,não" }}</td>
+    <td>{{ cadastro.impedimento_sublimite|yesno:"impedido,não" }}</td>
+    <td class="small">{{ cadastro.informado_por|default:"—" }}<div class="text-body-secondary">{{ cadastro.atualizado_em|date:"d/m/Y H:i" }}</div></td>
+    <td class="text-end">{% if pode.informar_aliquotas_sn %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'web:aliquotas-editar' cadastro.pk %}">Editar</a>{% endif %}</td>
+  </tr>
+  {% empty %}
+  <tr><td colspan="6" class="text-body-secondary">Nenhum período cadastrado.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

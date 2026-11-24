@@ -1,0 +1,5 @@
+.linha-item .form-label { white-space: nowrap; }
+.comparacao th, .comparacao td { min-width: 12rem; }
+pre { max-height: 30rem; overflow: auto; font-size: .75rem; }
+.campo-nfse { display: none; }
+form[data-nfse="1"] .campo-nfse { display: block; }

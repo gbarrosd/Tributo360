@@ -50,6 +50,8 @@ INSTALLED_APPS = [
     "auditoria",
     "engines",
     "simulacoes",
+    "catalogo",
+    "web",
 ]
 
 MIDDLEWARE = [
@@ -76,6 +78,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "web.contexto.sessao",
             ],
         },
     },
@@ -122,6 +125,16 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [BASE_DIR / "static"]
+
+LOGIN_URL = "web:login"
+LOGIN_REDIRECT_URL = "web:inicio"
+LOGOUT_REDIRECT_URL = "web:login"
+# Limite de tentativas de login pela tela (mesma taxa da API).
+WEB_LOGIN_TENTATIVAS = int(env("WEB_LOGIN_TENTATIVAS", "10"))
+WEB_LOGIN_JANELA_SEGUNDOS = int(env("WEB_LOGIN_JANELA_SEGUNDOS", "60"))
+# Upload de planilha do catálogo (o nginx aceita até 50 MB; a regra do catálogo corta em 5 MB).
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

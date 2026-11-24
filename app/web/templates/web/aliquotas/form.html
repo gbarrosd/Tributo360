@@ -1,0 +1,44 @@
+{% extends "web/base.html" %}{% load tributo %}
+{% block titulo %}Alíquotas do Simples{% endblock %}
+{% block conteudo %}
+<nav class="small mb-2"><a href="{% url 'web:empresa' empresa.pk %}">{{ empresa.razao_social }}</a> › <a href="{% url 'web:aliquotas' empresa.pk %}">Alíquotas do Simples</a></nav>
+<h1 class="h4 mb-1">{% if cadastro %}Alíquotas de {{ cadastro.periodo|date:"m/Y" }}{% else %}Cadastrar período{% endif %}</h1>
+{% if copiado_de %}<p class="small text-body-secondary">Valores copiados de {{ copiado_de.periodo|date:"m/Y" }}: confira com o PGDAS-D do mês novo.</p>{% endif %}
+<form method="post" class="card card-body" style="max-width: 56rem" novalidate>{% csrf_token %}
+  {% include "web/_erros_form.html" %}
+  <div class="row">
+    {% include "web/_campo.html" with campo=form.periodo classe="col-md-4 mb-3" %}
+    <div class="col-md-8 pt-md-4">
+      {% include "web/_campo.html" with campo=form.fator_r classe="mb-1" %}
+      {% include "web/_campo.html" with campo=form.impedimento_sublimite classe="mb-3" %}
+    </div>
+  </div>
+  <p class="small text-body-secondary mb-2">Alíquotas em %. Deixe em branco os anexos que a empresa não usa. Nos anexos III a V,
+    o segundo par é o sem redistribuição do ISS (ISS isento, imune ou retido conforme o PGDAS-D).</p>
+  <div class="table-responsive">
+  <table class="table table-sm align-middle">
+    <thead><tr><th>Anexo</th><th>CBS</th><th>IBS</th><th>CBS sem redistr. ISS</th><th>IBS sem redistr. ISS</th></tr></thead>
+    <tbody>
+    {% for linha in form.linhas_anexos %}
+    <tr>
+      <th>{{ linha.anexo }}</th>
+      <td>{{ linha.cbs|bs }}{% for e in linha.cbs.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}</td>
+      <td>{{ linha.ibs|bs }}{% for e in linha.ibs.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}</td>
+      <td>{% if linha.sr_cbs %}{{ linha.sr_cbs|bs }}{% for e in linha.sr_cbs.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}{% endif %}</td>
+      <td>{% if linha.sr_ibs %}{{ linha.sr_ibs|bs }}{% for e in linha.sr_ibs.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}{% endif %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% include "web/_campo.html" with campo=form.observacao %}
+  <div class="d-flex justify-content-between">
+    <button class="btn btn-primary">Salvar</button>
+  </div>
+</form>
+{% if cadastro %}
+<form method="post" action="{% url 'web:aliquotas-remover' cadastro.pk %}" class="mt-3">{% csrf_token %}
+  <button class="btn btn-sm btn-outline-danger">Remover este período</button>
+</form>
+{% endif %}
+{% endblock %}
