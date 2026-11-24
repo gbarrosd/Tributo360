@@ -1,5 +1,5 @@
 {% for erro in item.erros_validacao %}
-<div class="small text-danger">{% if erro.codigo %}<span class="font-monospace">{{ erro.codigo }}</span> {% endif %}{% if erro.campo %}<strong>{{ erro.campo }}</strong>: {% endif %}{{ erro.mensagem }}
-  <span class="text-body-secondary">({{ erro.origem }})</span></div>
+<div class="mt-0.5 text-xs text-erro">{% if erro.codigo %}<span class="font-mono">{{ erro.codigo }}</span> {% endif %}{% if erro.campo %}<strong>{{ erro.campo }}</strong>: {% endif %}{{ erro.mensagem }}
+  <span class="text-suave">({{ erro.origem }})</span></div>
 {% endfor %}
-{% for aviso in item.validacao.avisos %}<div class="small text-body-secondary">{{ aviso }}</div>{% endfor %}
+{% for aviso in item.validacao.avisos %}<div class="mt-0.5 text-xs text-suave">{{ aviso }}</div>{% endfor %}

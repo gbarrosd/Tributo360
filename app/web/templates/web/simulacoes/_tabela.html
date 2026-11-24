@@ -1,20 +1,20 @@
-{% load tributo %}<div class="table-responsive">
-<table class="table table-sm table-hover align-middle mb-0">
-  <thead><tr>{% if selecionar %}<th></th>{% endif %}<th>Cenário</th>{% if not sem_empresa %}<th>Empresa</th>{% endif %}<th>Data</th><th class="text-end">CBS</th><th class="text-end">IBS</th><th>Situação</th></tr></thead>
+{% load tributo %}<div class="tabela-wrap">
+<table class="tabela tabela-hover">
+  <thead><tr>{% if selecionar %}<th class="w-8"></th>{% endif %}<th>Cenário</th>{% if not sem_empresa %}<th>Empresa</th>{% endif %}<th>Data</th><th class="num">CBS</th><th class="num">IBS</th><th>Situação</th></tr></thead>
   <tbody>
   {% for s in simulacoes %}
   <tr>
-    {% if selecionar %}<td><input class="form-check-input" type="checkbox" name="ids" value="{{ s.pk }}" data-comparar></td>{% endif %}
-    <td><a href="{% url 'web:simulacao' s.pk %}">{{ s.rotulo|default:"(sem nome)" }}</a>
-      <div class="small text-body-secondary">{{ s.get_tipo_display }} · {{ s.criado_em|date:"d/m/Y H:i" }}</div></td>
-    {% if not sem_empresa %}<td class="small">{{ s.empresa.razao_social }}</td>{% endif %}
-    <td class="small">{{ s.data_fato_gerador|date:"d/m/Y" }}</td>
-    <td class="text-end small">{{ s.total_cbs|moeda }}</td>
-    <td class="text-end small">{{ s.total_ibs|moeda }}</td>
+    {% if selecionar %}<td><input class="caixa" type="checkbox" name="ids" value="{{ s.pk }}" data-comparar aria-label="Comparar {{ s.rotulo|default:'simulação' }}"></td>{% endif %}
+    <td class="min-w-48"><a class="font-medium" href="{% url 'web:simulacao' s.pk %}">{{ s.rotulo|default:"(sem nome)" }}</a>
+      <div class="text-xs text-suave whitespace-nowrap">{{ s.get_tipo_display }} · {{ s.criado_em|date:"d/m/Y H:i" }}</div></td>
+    {% if not sem_empresa %}<td class="text-sm min-w-40">{{ s.empresa.razao_social }}</td>{% endif %}
+    <td class="text-sm whitespace-nowrap">{{ s.data_fato_gerador|date:"d/m/Y" }}</td>
+    <td class="num">{{ s.total_cbs|moeda }}</td>
+    <td class="num">{{ s.total_ibs|moeda }}</td>
     <td>{% situacao s.situacao %}</td>
   </tr>
   {% empty %}
-  <tr><td colspan="7" class="text-body-secondary">Nenhuma simulação ainda.</td></tr>
+  <tr><td colspan="7" class="vazio">Nenhuma simulação ainda.</td></tr>
   {% endfor %}
   </tbody>
 </table>

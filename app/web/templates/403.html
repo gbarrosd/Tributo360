@@ -1,7 +1,10 @@
 {% extends "web/base.html" %}
 {% block titulo %}Sem permissão{% endblock %}
 {% block conteudo %}
-<h1 class="h4">Sem permissão</h1>
-<p>{{ exception|default:"Seu papel neste escritório não permite esta ação." }}</p>
-<a href="{% url 'web:inicio' %}">Voltar ao início</a>
+<div class="mx-auto mt-10 max-w-md card card-body text-center">
+  <div class="font-mono text-3xl font-medium text-suave">403</div>
+  <h1 class="mt-2 text-lg font-semibold">Sem permissão</h1>
+  <p class="mt-1 text-sm text-suave">{{ exception|default:"Seu papel neste escritório não permite esta ação." }}</p>
+  <div class="mt-5"><a class="btn btn-primary" href="{% url 'web:inicio' %}">Voltar ao início</a></div>
+</div>
 {% endblock %}

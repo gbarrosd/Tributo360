@@ -1,53 +1,51 @@
 {% extends "web/base.html" %}{% load tributo %}
 {% block titulo %}{{ empresa.razao_social }}{% endblock %}
 {% block conteudo %}
-<nav class="small mb-2"><a href="{% url 'web:empresas' %}">Empresas</a></nav>
-<div class="d-flex flex-wrap gap-2 justify-content-between align-items-start mb-3">
+<nav class="migalhas"><a href="{% url 'web:empresas' %}">Empresas</a></nav>
+<div class="cabecalho-pagina">
   <div>
-    <h1 class="h4 mb-1">{{ empresa.razao_social }} {% if not empresa.ativa %}<span class="badge text-bg-secondary">Inativa</span>{% endif %}</h1>
-    <div class="text-body-secondary small">CNPJ {{ empresa.cnpj }} · {{ empresa.get_regime_display }} · CRT {{ empresa.crt }} ·
-      CNAE {{ empresa.cnae_principal }} · {{ empresa.uf }} / IBGE {{ empresa.municipio_ibge }}</div>
+    <h1 class="titulo-pagina">{{ empresa.razao_social }} {% if not empresa.ativa %}<span class="badge badge-secondary">Inativa</span>{% endif %}</h1>
+    <p class="subtitulo"><span class="font-mono">CNPJ {{ empresa.cnpj }}</span> · {{ empresa.get_regime_display }} · CRT {{ empresa.crt }} ·
+      CNAE {{ empresa.cnae_principal }} · {{ empresa.uf }} / IBGE {{ empresa.municipio_ibge }}</p>
   </div>
-  <div class="d-flex gap-2">
-    {% if pode.editar_empresas %}<a class="btn btn-outline-secondary" href="{% url 'web:empresa-editar' empresa.pk %}">Editar</a>{% endif %}
+  <div class="acoes">
+    {% if pode.editar_empresas %}<a class="btn btn-secondary" href="{% url 'web:empresa-editar' empresa.pk %}">Editar</a>{% endif %}
     {% if pode.simular and empresa.ativa %}<a class="btn btn-primary" href="{% url 'web:simular' empresa.pk %}">Nova simulação</a>{% endif %}
   </div>
 </div>
-<div class="row g-4">
-  <div class="col-lg-{% if eh_simples %}4{% else %}5{% endif %}">
-    <div class="card h-100">
-      <div class="card-header d-flex justify-content-between"><span>Catálogo de itens</span><span class="badge text-bg-secondary">{{ total_itens }}</span></div>
-      <div class="card-body">
-        <p class="mb-2">{% status_item "aprovado" %} {{ contagem_itens.aprovado }}
-          {% status_item "pendente" %} {{ contagem_itens.pendente }}
-          {% status_item "revisar" %} {{ contagem_itens.revisar }}</p>
-        <a class="btn btn-sm btn-outline-primary" href="{% url 'web:catalogo' empresa.pk %}">Abrir catálogo</a>
-        {% if pode.cadastrar_itens %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'web:catalogo-importar' empresa.pk %}">Importar planilha</a>{% endif %}
+<div class="grid gap-5 {% if eh_simples %}lg:grid-cols-3{% else %}lg:grid-cols-5{% endif %}">
+  <div class="card flex flex-col {% if not eh_simples %}lg:col-span-2{% endif %}">
+    <div class="card-header"><span>Catálogo de itens</span><span class="badge badge-secondary">{{ total_itens }}</span></div>
+    <div class="card-body flex-1 space-y-4">
+      <div class="grid grid-cols-3 gap-2 text-center">
+        <div class="rounded-md bg-ok-fundo px-2 py-2"><div class="font-mono text-lg text-ok">{{ contagem_itens.aprovado }}</div><div class="text-xs text-ok">Aprovados</div></div>
+        <div class="rounded-md bg-aviso-fundo px-2 py-2"><div class="font-mono text-lg text-aviso">{{ contagem_itens.pendente }}</div><div class="text-xs text-aviso">Pendentes</div></div>
+        <div class="rounded-md bg-erro-fundo px-2 py-2"><div class="font-mono text-lg text-erro">{{ contagem_itens.revisar }}</div><div class="text-xs text-erro">Revisar</div></div>
+      </div>
+      <div class="acoes">
+        <a class="btn btn-outline btn-sm" href="{% url 'web:catalogo' empresa.pk %}">Abrir catálogo</a>
+        {% if pode.cadastrar_itens %}<a class="btn btn-secondary btn-sm" href="{% url 'web:catalogo-importar' empresa.pk %}">{% include "web/_icone.html" with nome="upload" %}Importar planilha</a>{% endif %}
       </div>
     </div>
   </div>
   {% if eh_simples %}
-  <div class="col-lg-4">
-    <div class="card h-100">
-      <div class="card-header">Alíquotas efetivas do Simples</div>
-      <ul class="list-group list-group-flush">
-        {% for cadastro in aliquotas_simples %}
-        <li class="list-group-item d-flex justify-content-between"><span>{{ cadastro.periodo|date:"m/Y" }}</span>
-          <span class="small text-body-secondary">{{ cadastro.anexos|length }} anexo(s){% if cadastro.fator_r %} · fator R{% endif %}</span></li>
-        {% empty %}
-        <li class="list-group-item text-body-secondary">Nenhum período cadastrado. A simulação do Simples precisa do cadastro do mês.</li>
-        {% endfor %}
-      </ul>
-      <div class="card-footer"><a href="{% url 'web:aliquotas' empresa.pk %}">Gerenciar períodos</a></div>
+  <div class="card flex flex-col">
+    <div class="card-header">Alíquotas efetivas do Simples</div>
+    <div class="divide-y divide-borda flex-1">
+      {% for cadastro in aliquotas_simples %}
+      <div class="flex justify-between gap-3 px-4 py-2.5"><span class="font-mono">{{ cadastro.periodo|date:"m/Y" }}</span>
+        <span class="text-xs text-suave">{{ cadastro.anexos|length }} anexo(s){% if cadastro.fator_r %} · fator R{% endif %}</span></div>
+      {% empty %}
+      <div class="px-4 py-4 text-sm text-suave">Nenhum período cadastrado. A simulação do Simples precisa do cadastro do mês.</div>
+      {% endfor %}
     </div>
+    <div class="card-footer"><a href="{% url 'web:aliquotas' empresa.pk %}">Gerenciar períodos</a></div>
   </div>
   {% endif %}
-  <div class="col-lg-{% if eh_simples %}4{% else %}7{% endif %}">
-    <div class="card h-100">
-      <div class="card-header">Últimas simulações</div>
-      {% include "web/simulacoes/_tabela.html" with simulacoes=simulacoes sem_empresa=True %}
-      <div class="card-footer"><a href="{% url 'web:historico' %}?empresa={{ empresa.pk }}">Histórico da empresa</a></div>
-    </div>
+  <div class="card flex flex-col {% if not eh_simples %}lg:col-span-3{% endif %}">
+    <div class="card-header">Últimas simulações</div>
+    <div class="flex-1">{% include "web/simulacoes/_tabela.html" with simulacoes=simulacoes sem_empresa=True %}</div>
+    <div class="card-footer"><a href="{% url 'web:historico' %}?empresa={{ empresa.pk }}">Histórico da empresa</a></div>
   </div>
 </div>
 {% endblock %}

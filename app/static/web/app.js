@@ -1,27 +1,15 @@
 // Comportamentos pequenos das telas. Tudo funciona sem JS; isto só poupa digitação.
+// Menus, seleção em tabelas e confirmações ficam no próprio template com Alpine; filtros usam HTMX.
 (function () {
   "use strict";
 
-  // --- Catálogo: marcar todos e exigir seleção para aprovar ---------------------------------------
-  document.querySelectorAll("[data-marcar-todos]").forEach(function (todos) {
-    todos.addEventListener("change", function () {
-      todos.closest("table").querySelectorAll('input[name="itens"]').forEach(function (c) { c.checked = todos.checked; });
+  // --- Tema claro/escuro (o <head> já aplicou o tema salvo antes de pintar) -----------------------
+  document.querySelectorAll("[data-alternar-tema]").forEach(function (botao) {
+    botao.addEventListener("click", function () {
+      var escuro = document.documentElement.classList.toggle("dark");
+      try { localStorage.setItem("tema", escuro ? "escuro" : "claro"); } catch (e) { /* navegação privada */ }
     });
   });
-
-  // --- Histórico: comparar de 2 a N simulações -----------------------------------------------------
-  var formComparar = document.getElementById("form-comparar");
-  if (formComparar) {
-    var maximo = parseInt(formComparar.dataset.maxComparacao, 10);
-    var botao = document.getElementById("botao-comparar");
-    var atualizar = function () {
-      var marcadas = formComparar.querySelectorAll("[data-comparar]:checked").length;
-      botao.disabled = marcadas < 2 || marcadas > maximo;
-      botao.textContent = marcadas > maximo ? "No máximo " + maximo : "Comparar selecionadas" + (marcadas ? " (" + marcadas + ")" : "");
-    };
-    formComparar.addEventListener("change", atualizar);
-    atualizar();
-  }
 
   // --- Formulário de simulação ------------------------------------------------------------------
   var form = document.getElementById("form-simulacao");

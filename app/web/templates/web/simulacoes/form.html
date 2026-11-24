@@ -1,72 +1,82 @@
 {% extends "web/base.html" %}{% load tributo %}
 {% block titulo %}Simular · {{ empresa.razao_social }}{% endblock %}
 {% block conteudo %}
-<nav class="small mb-2"><a href="{% url 'web:empresas' %}">Empresas</a> › <a href="{% url 'web:empresa' empresa.pk %}">{{ empresa.razao_social }}</a></nav>
-<h1 class="h4 mb-1">Nova simulação · {% if simples %}Simples Nacional{% else %}regime regular{% endif %}</h1>
-<p class="small text-body-secondary">{{ empresa.razao_social }} · {{ empresa.uf }} / IBGE {{ empresa.municipio_ibge }} · CRT {{ empresa.crt }}
-  {% if origem %} · variação de <a href="{% url 'web:simulacao' origem.pk %}">{{ origem.rotulo|default:"simulação anterior" }}</a>{% endif %}</p>
+<nav class="migalhas"><a href="{% url 'web:empresas' %}">Empresas</a> › <a href="{% url 'web:empresa' empresa.pk %}">{{ empresa.razao_social }}</a></nav>
+<div class="cabecalho-pagina"><div>
+  <h1 class="titulo-pagina">Nova simulação <span class="badge badge-primary">{% if simples %}Simples Nacional{% else %}Regime regular{% endif %}</span></h1>
+  <p class="subtitulo">{{ empresa.razao_social }} · {{ empresa.uf }} / IBGE {{ empresa.municipio_ibge }} · CRT {{ empresa.crt }}
+    {% if origem %} · variação de <a href="{% url 'web:simulacao' origem.pk %}">{{ origem.rotulo|default:"simulação anterior" }}</a>{% endif %}</p>
+</div></div>
 
 {% if falta_periodo %}
 <div class="alert alert-warning">
-  <div class="fw-semibold">Não há alíquotas efetivas do Simples para {{ falta_periodo|date:"m/Y" }}.</div>
+  <div class="font-semibold">Não há alíquotas efetivas do Simples para {{ falta_periodo|date:"m/Y" }}.</div>
   O cálculo do Simples usa as alíquotas do PGDAS-D do mês. Cadastre o período e volte para simular (os dados abaixo não se perdem se você abrir em outra aba).
-  {% if pode.informar_aliquotas_sn %}<div class="mt-2"><a class="btn btn-sm btn-warning" target="_blank" href="{% url 'web:aliquotas-nova' empresa.pk %}?periodo={{ falta_periodo|date:'Y-m' }}">Cadastrar alíquotas de {{ falta_periodo|date:"m/Y" }}</a></div>
-  {% else %}<div class="mt-2 small">Peça a um contador ou administrador do escritório para cadastrar.</div>{% endif %}
+  {% if pode.informar_aliquotas_sn %}<div class="mt-2"><a class="btn btn-outline btn-sm" target="_blank" href="{% url 'web:aliquotas-nova' empresa.pk %}?periodo={{ falta_periodo|date:'Y-m' }}">Cadastrar alíquotas de {{ falta_periodo|date:"m/Y" }}</a></div>
+  {% else %}<div class="mt-2 text-xs">Peça a um contador ou administrador do escritório para cadastrar.</div>{% endif %}
 </div>
 {% endif %}
 
-<form method="post" novalidate id="form-simulacao" data-simples="{{ simples|yesno:'1,0' }}" data-municipio="{{ empresa.municipio_ibge }}" data-ano-aliquotas="{{ ano_aliquotas }}">{% csrf_token %}
+<form method="post" novalidate id="form-simulacao" class="space-y-5" data-simples="{{ simples|yesno:'1,0' }}" data-municipio="{{ empresa.municipio_ibge }}" data-ano-aliquotas="{{ ano_aliquotas }}"
+      x-data="{ enviando: false }" @submit="enviando = true">{% csrf_token %}
   {% include "web/_erros_form.html" %}
-  <div class="card mb-3"><div class="card-body">
-    <div class="row">
-      {% include "web/_campo.html" with campo=form.rotulo classe="col-md-4 mb-3" %}
-      {% include "web/_campo.html" with campo=form.data classe="col-md-3 mb-3" %}
+  <div class="card">
+    <div class="card-header">Premissas</div>
+    <div class="card-body space-y-4">
+      <div class="grade-form">
+        {% include "web/_campo.html" with campo=form.rotulo classe="sm:col-span-4" %}
+        {% include "web/_campo.html" with campo=form.data classe="sm:col-span-3" %}
+        {% if simples %}
+          {% include "web/_campo.html" with campo=form.tp_doc classe="sm:col-span-3" %}
+        {% else %}
+          {% include "web/_campo.html" with campo=form.hora classe="sm:col-span-2" %}
+          {% include "web/_campo.html" with campo=form.tp_doc classe="sm:col-span-3" %}
+          {% include "web/_campo.html" with campo=form.uf classe="sm:col-span-3" %}
+          {% include "web/_campo.html" with campo=form.municipio classe="sm:col-span-4" %}
+        {% endif %}
+      </div>
       {% if simples %}
-        {% include "web/_campo.html" with campo=form.tp_doc classe="col-md-3 mb-3" %}
+        <p class="text-sm">Alíquotas efetivas: cadastro do mês da operação.
+          {% if periodos_cadastrados %}Períodos cadastrados: {% for p in periodos_cadastrados %}<span class="badge badge-secondary font-mono">{{ p|date:"m/Y" }}</span> {% endfor %}
+          {% else %}<strong>Nenhum período cadastrado ainda.</strong>{% endif %}
+          <a href="{% url 'web:aliquotas' empresa.pk %}">Gerenciar</a></p>
       {% else %}
-        {% include "web/_campo.html" with campo=form.hora classe="col-md-2 mb-3" %}
-        {% include "web/_campo.html" with campo=form.tp_doc classe="col-md-3 mb-3" %}
-        {% include "web/_campo.html" with campo=form.uf classe="col-md-2 mb-3" %}
-        {% include "web/_campo.html" with campo=form.municipio classe="col-md-3 mb-3" %}
+      <div id="bloco-aliquotas" class="border-t border-borda pt-4">
+        <div class="mb-2 flex flex-wrap justify-between gap-2"><h2 class="text-xs font-medium uppercase tracking-wider text-suave">Alíquotas nominais</h2><span class="text-xs text-suave" id="aliquotas-status"></span></div>
+        <p class="text-xs text-suave" id="aliquotas-2026">Antes de {{ ano_aliquotas }} o motor usa as alíquotas de teste dele (CBS 0,9% e IBS 0,1%) e não aceita outras.</p>
+        <div id="aliquotas-campos" class="space-y-2">
+          <div class="grade-form">
+            {% include "web/_campo.html" with campo=form.cbs classe="sm:col-span-3" %}
+            {% include "web/_campo.html" with campo=form.ibs_estadual classe="sm:col-span-3" %}
+            {% include "web/_campo.html" with campo=form.ibs_municipal classe="sm:col-span-3" %}
+          </div>
+          <div class="text-xs text-suave" id="aliquotas-fontes"></div>
+          <div class="text-xs text-suave">Preenchidas com a tabela do Tributo360 para a data e o município. Em branco = usa a tabela.
+            Se você mudar um valor, a simulação registra "editada pelo usuário" e o valor que a tabela sugeria.</div>
+        </div>
+      </div>
       {% endif %}
     </div>
-    {% if simples %}
-      <p class="small mb-0">Alíquotas efetivas: cadastro do mês da operação.
-        {% if periodos_cadastrados %}Períodos cadastrados: {% for p in periodos_cadastrados %}<span class="badge text-bg-light border">{{ p|date:"m/Y" }}</span> {% endfor %}
-        {% else %}<strong>Nenhum período cadastrado ainda.</strong>{% endif %}
-        <a href="{% url 'web:aliquotas' empresa.pk %}">Gerenciar</a></p>
-    {% else %}
-    <div id="bloco-aliquotas" class="border-top pt-3">
-      <div class="d-flex justify-content-between"><h2 class="h6">Alíquotas nominais</h2><span class="small text-body-secondary" id="aliquotas-status"></span></div>
-      <p class="small text-body-secondary" id="aliquotas-2026">Antes de {{ ano_aliquotas }} o motor usa as alíquotas de teste dele (CBS 0,9% e IBS 0,1%) e não aceita outras.</p>
-      <div class="row" id="aliquotas-campos">
-        {% include "web/_campo.html" with campo=form.cbs classe="col-md-3 mb-2" %}
-        {% include "web/_campo.html" with campo=form.ibs_estadual classe="col-md-3 mb-2" %}
-        {% include "web/_campo.html" with campo=form.ibs_municipal classe="col-md-3 mb-2" %}
-        <div class="col-12 small text-body-secondary" id="aliquotas-fontes"></div>
-        <div class="col-12 small text-body-secondary">Preenchidas com a tabela do Tributo360 para a data e o município. Em branco = usa a tabela.
-          Se você mudar um valor, a simulação registra "editada pelo usuário" e o valor que a tabela sugeria.</div>
-      </div>
-    </div>
-    {% endif %}
-  </div></div>
+  </div>
 
-  <div class="card mb-3">
-    <div class="card-header d-flex justify-content-between align-items-center">
+  <div class="card">
+    <div class="card-header">
       <span>Itens</span>
-      <span class="small text-body-secondary">{% if catalogo %}Escolha um item do catálogo ou digite os códigos.{% else %}Sem itens no catálogo: digite os códigos ou <a href="{% url 'web:catalogo-importar' empresa.pk %}">importe uma planilha</a>.{% endif %}</span>
+      <span class="text-xs font-normal text-suave">{% if catalogo %}Escolha um item do catálogo ou digite os códigos.{% else %}Sem itens no catálogo: digite os códigos ou <a href="{% url 'web:catalogo-importar' empresa.pk %}">importe uma planilha</a>.{% endif %}</span>
     </div>
-    <div class="card-body">
+    <div class="card-body space-y-3">
       {{ formset.management_form }}
       {% for erro in formset.non_form_errors %}<div class="alert alert-danger">{{ erro }}</div>{% endfor %}
-      <div id="itens">
+      <div id="itens" class="space-y-2">
         {% for linha in formset %}{% include "web/simulacoes/_linha_item.html" %}{% endfor %}
       </div>
       <template id="modelo-item">{% include "web/simulacoes/_linha_item.html" with linha=formset.empty_form %}</template>
-      <button type="button" class="btn btn-sm btn-outline-secondary" id="adicionar-item">+ Adicionar item</button>
+      <button type="button" class="btn btn-secondary btn-sm" id="adicionar-item">{% include "web/_icone.html" with nome="mais" %}Adicionar item</button>
     </div>
   </div>
-  <button class="btn btn-primary btn-lg">Calcular</button>
+  <div class="flex justify-end">
+    <button class="btn btn-primary btn-lg" :disabled="enviando"><span x-show="!enviando">Calcular</span><span x-show="enviando" x-cloak>Calculando no motor…</span></button>
+  </div>
 </form>
 {{ catalogo_json|json_script:"catalogo-json" }}
 {% endblock %}

@@ -1,7 +1,10 @@
 {% extends "web/base.html" %}
 {% block titulo %}Não encontrado{% endblock %}
 {% block conteudo %}
-<h1 class="h4">Página não encontrada</h1>
-<p>O endereço não existe ou o registro não pertence ao escritório selecionado.</p>
-<a href="{% url 'web:inicio' %}">Voltar ao início</a>
+<div class="mx-auto mt-10 max-w-md card card-body text-center">
+  <div class="font-mono text-3xl font-medium text-suave">404</div>
+  <h1 class="mt-2 text-lg font-semibold">Página não encontrada</h1>
+  <p class="mt-1 text-sm text-suave">O endereço não existe ou o registro não pertence ao escritório selecionado.</p>
+  <div class="mt-5"><a class="btn btn-primary" href="{% url 'web:inicio' %}">Voltar ao início</a></div>
+</div>
 {% endblock %}

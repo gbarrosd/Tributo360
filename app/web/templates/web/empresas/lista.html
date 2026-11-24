@@ -1,39 +1,42 @@
 {% extends "web/base.html" %}
 {% block titulo %}Empresas{% endblock %}
 {% block conteudo %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h4 mb-0">Empresas</h1>
-  {% if pode.editar_empresas %}<a class="btn btn-primary" href="{% url 'web:empresa-nova' %}">Nova empresa</a>{% endif %}
+<div class="cabecalho-pagina">
+  <div><h1 class="titulo-pagina">Empresas</h1><p class="subtitulo">Carteira de clientes do escritório</p></div>
+  {% if pode.editar_empresas %}<div class="acoes"><a class="btn btn-primary" href="{% url 'web:empresa-nova' %}">{% include "web/_icone.html" with nome="mais" %}Nova empresa</a></div>{% endif %}
 </div>
-<form class="row g-2 mb-3" method="get">
-  <div class="col-sm-6 col-md-4"><input class="form-control" name="q" value="{{ busca }}" placeholder="Razão social, fantasia ou CNPJ"></div>
-  <div class="col-auto">
-    <select class="form-select" name="ativa">
+<div class="card">
+  <form class="flex flex-wrap items-center gap-2 border-b border-borda p-3" method="get" {% include "web/_filtro_htmx.html" %}>
+    <div class="relative w-full sm:w-80">
+      <span class="pointer-events-none absolute inset-y-0 left-3 grid place-items-center text-suave">{% include "web/_icone.html" with nome="lupa" %}</span>
+      <input class="campo pl-9" name="q" value="{{ busca }}" placeholder="Razão social, fantasia ou CNPJ" aria-label="Buscar empresa">
+    </div>
+    <select class="campo w-auto" name="ativa" aria-label="Situação">
       <option value="true" {% if situacao == "true" %}selected{% endif %}>Ativas</option>
       <option value="false" {% if situacao == "false" %}selected{% endif %}>Inativas</option>
       <option value="todas" {% if situacao == "todas" %}selected{% endif %}>Todas</option>
     </select>
+    <noscript><button class="btn btn-secondary">Filtrar</button></noscript>
+  </form>
+  <div class="tabela-wrap" id="resultado">
+  <table class="tabela tabela-hover">
+    <thead><tr><th>Razão social</th><th>CNPJ</th><th>Regime</th><th>UF</th><th></th></tr></thead>
+    <tbody>
+    {% for empresa in empresas %}
+    <tr>
+      <td><a class="font-medium" href="{% url 'web:empresa' empresa.pk %}">{{ empresa.razao_social }}</a>
+        {% if empresa.nome_fantasia %}<div class="text-xs text-suave">{{ empresa.nome_fantasia }}</div>{% endif %}</td>
+      <td class="font-mono text-xs whitespace-nowrap">{{ empresa.cnpj }}</td>
+      <td>{{ empresa.get_regime_display }}</td>
+      <td>{{ empresa.uf }}</td>
+      <td class="text-right whitespace-nowrap">{% if not empresa.ativa %}<span class="badge badge-secondary">Inativa</span>{% endif %}
+        {% if pode.simular and empresa.ativa %}<a class="btn btn-outline btn-sm" href="{% url 'web:simular' empresa.pk %}">Simular</a>{% endif %}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="5" class="vazio">Nenhuma empresa encontrada.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
   </div>
-  <div class="col-auto"><button class="btn btn-outline-secondary">Filtrar</button></div>
-</form>
-<div class="table-responsive">
-<table class="table table-hover align-middle">
-  <thead><tr><th>Razão social</th><th>CNPJ</th><th>Regime</th><th>UF</th><th></th></tr></thead>
-  <tbody>
-  {% for empresa in empresas %}
-  <tr>
-    <td><a href="{% url 'web:empresa' empresa.pk %}">{{ empresa.razao_social }}</a>
-      {% if empresa.nome_fantasia %}<div class="small text-body-secondary">{{ empresa.nome_fantasia }}</div>{% endif %}</td>
-    <td class="font-monospace small">{{ empresa.cnpj }}</td>
-    <td>{{ empresa.get_regime_display }}</td>
-    <td>{{ empresa.uf }}</td>
-    <td class="text-end">{% if not empresa.ativa %}<span class="badge text-bg-secondary">Inativa</span>{% endif %}
-      {% if pode.simular and empresa.ativa %}<a class="btn btn-sm btn-outline-primary" href="{% url 'web:simular' empresa.pk %}">Simular</a>{% endif %}</td>
-  </tr>
-  {% empty %}
-  <tr><td colspan="5" class="text-body-secondary">Nenhuma empresa encontrada.</td></tr>
-  {% endfor %}
-  </tbody>
-</table>
 </div>
 {% endblock %}

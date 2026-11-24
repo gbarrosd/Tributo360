@@ -1,40 +1,41 @@
 {% extends "web/base.html" %}
 {% block titulo %}Escritórios{% endblock %}
 {% block conteudo %}
-<h1 class="h4 mb-3">Escritórios</h1>
-{% if memberships %}
-<div class="list-group mb-4" style="max-width: 40rem">
-  {% for m in memberships %}
-  <form method="post" class="list-group-item d-flex justify-content-between align-items-center">{% csrf_token %}
-    <div>
-      <div class="fw-semibold">{{ m.escritorio.razao_social }}</div>
-      <div class="small text-body-secondary">{{ m.get_papel_display }} · {{ m.escritorio.get_status_display }}</div>
-    </div>
-    <input type="hidden" name="escritorio" value="{{ m.escritorio_id }}">
-    {% if membership_ativa.escritorio_id == m.escritorio_id %}
-    <span class="badge text-bg-primary">Ativo</span>
-    {% else %}
-    <button class="btn btn-outline-primary btn-sm">Usar este</button>
-    {% endif %}
-  </form>
-  {% endfor %}
-</div>
-{% else %}
-<div class="alert alert-info" style="max-width: 40rem">
-  Sua conta ainda não participa de nenhum escritório. Crie o primeiro abaixo (você será o dono) ou peça um
-  convite a quem administra o escritório.
-</div>
-{% endif %}
-{% if form %}
-<div class="card" style="max-width: 40rem">
-  <div class="card-body">
-    <h2 class="h6">Criar escritório</h2>
-    <form method="post" action="{% url 'web:escritorio-novo' %}" novalidate>{% csrf_token %}
+<div class="max-w-2xl">
+  <div class="cabecalho-pagina"><div><h1 class="titulo-pagina">Escritórios</h1>
+    <p class="subtitulo">Escolha com qual escritório você vai trabalhar. A escolha vale para as telas e para a API no navegador.</p></div></div>
+  {% if memberships %}
+  <div class="card mb-6 divide-y divide-borda">
+    {% for m in memberships %}
+    <form method="post" class="flex items-center justify-between gap-3 px-4 py-3">{% csrf_token %}
+      <div>
+        <div class="font-medium">{{ m.escritorio.razao_social }}</div>
+        <div class="text-xs text-suave">{{ m.get_papel_display }} · {{ m.escritorio.get_status_display }}</div>
+      </div>
+      <input type="hidden" name="escritorio" value="{{ m.escritorio_id }}">
+      {% if membership_ativa.escritorio_id == m.escritorio_id %}
+      <span class="badge badge-primary">Ativo</span>
+      {% else %}
+      <button class="btn btn-outline btn-sm">Usar este</button>
+      {% endif %}
+    </form>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="alert alert-info">
+    Sua conta ainda não participa de nenhum escritório. Crie o primeiro abaixo (você será o dono) ou peça um
+    convite a quem administra o escritório.
+  </div>
+  {% endif %}
+  {% if form %}
+  <div class="card">
+    <div class="card-header">Criar escritório</div>
+    <form method="post" action="{% url 'web:escritorio-novo' %}" class="card-body space-y-4" novalidate>{% csrf_token %}
       {% include "web/_erros_form.html" %}
       {% for campo in form %}{% include "web/_campo.html" %}{% endfor %}
       <button class="btn btn-primary">Criar escritório</button>
     </form>
   </div>
+  {% endif %}
 </div>
-{% endif %}
 {% endblock %}

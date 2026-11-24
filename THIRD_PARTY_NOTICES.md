@@ -17,8 +17,11 @@ Dados de teste: `app/engines/tests/respostas/` guarda entradas e respostas grava
 oficiais do `docs/exemplos.md` e do OpenAPI de cada um) e `nfse_autorizada_teste.xml`, copiado dos testes
 do gerador DANFSe. Todos MIT, Copyright 2026 Receita Federal do Brasil.
 
-Front-end: [Bootstrap](https://getbootstrap.com) 5.3.3 (MIT, The Bootstrap Authors), copiado sem
-modificação para `app/static/vendor/bootstrap/` com o arquivo `LICENSE`. Leitura de XLSX:
+Front-end, copiados sem modificação para `app/static/vendor/` por `app/frontend/copiar-vendor.mjs`:
+[htmx](https://htmx.org) 2.0.4 (0BSD, Big Sky Software, com `LICENSE`), [Alpine.js](https://alpinejs.dev)
+3.14.8 (MIT, Caleb Porzio and contributors) e as fontes [IBM Plex Sans e IBM Plex Mono](https://github.com/IBM/plex)
+via Fontsource 5.2.6 (SIL Open Font License 1.1, IBM Corp., com `LICENSE-IBM-Plex.txt`). O CSS
+`app/static/web/app.css` é gerado pelo [Tailwind CSS](https://tailwindcss.com) 4.1.11 (MIT, Tailwind Labs). Leitura de XLSX:
 [openpyxl](https://openpyxl.readthedocs.io) (MIT).
 
 Pendente antes do lançamento: validação jurídica e página "Componentes de código aberto" no produto.

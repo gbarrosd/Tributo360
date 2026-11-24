@@ -1,14 +1,14 @@
-{% load tributo %}<div class="linha-item border rounded p-2 mb-2" data-linha>
-  {% for erro in linha.non_field_errors %}<div class="small text-danger mb-1">{{ erro }}</div>{% endfor %}
-  <div class="row g-2 align-items-end">
-    <div class="col-md-3"><label class="form-label small mb-0">{{ linha.item_catalogo.label }}</label>{{ linha.item_catalogo|bs:"form-select-sm campo-catalogo" }}</div>
+{% load tributo %}<div class="linha-item" data-linha>
+  {% for erro in linha.non_field_errors %}<div class="mb-1 text-xs text-erro">{{ erro }}</div>{% endfor %}
+  <div class="flex flex-wrap items-end gap-2">
+    <div class="min-w-0 grow-[2] basis-48"><label class="form-label" for="{{ linha.item_catalogo.id_for_label }}">{{ linha.item_catalogo.label }}</label>{{ linha.item_catalogo|controle:"campo-sm campo-catalogo" }}</div>
     {% for campo in linha %}{% if campo.name != "item_catalogo" %}
-    <div class="col-6 col-md{% if campo.name == 'base_calculo' %}-2{% endif %} {% if campo.name in 'trib_issqn tp_ret_issqn tp_bm' %}campo-nfse{% endif %}">
-      <label class="form-label small mb-0" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
-      {{ campo|bs:"form-control-sm" }}
+    <div class="min-w-0 grow basis-24 {% if campo.name in 'trib_issqn tp_ret_issqn tp_bm' %}campo-nfse{% endif %}">
+      <label class="form-label truncate" for="{{ campo.id_for_label }}" title="{{ campo.label }}">{{ campo.label }}</label>
+      {{ campo|controle:"campo-sm" }}
       {% for erro in campo.errors %}<div class="invalid-feedback">{{ erro }}</div>{% endfor %}
     </div>
     {% endif %}{% endfor %}
-    <div class="col-auto"><button type="button" class="btn btn-sm btn-outline-danger" data-remover title="Remover item">×</button></div>
+    <div class="flex grow-0 justify-end"><button type="button" class="btn btn-danger btn-sm" data-remover title="Remover item" aria-label="Remover item">{% include "web/_icone.html" with nome="fechar" %}</button></div>
   </div>
 </div>
