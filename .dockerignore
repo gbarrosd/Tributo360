@@ -1,0 +1,8 @@
+# Contexto da imagem dos motores Java (raiz do repositório): só engines/ interessa.
+.git
+**/.git
+app
+docker/nginx
+docs
+**/target
+**/calculadora/db

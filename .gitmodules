@@ -1,0 +1,9 @@
+[submodule "engines/calculadora-rtc-regime-regular"]
+	path = engines/calculadora-rtc-regime-regular
+	url = https://github.com/ReceitaFederal/calculadora-rtc-regime-regular.git
+[submodule "engines/calculadora-rtc-simples-nacional"]
+	path = engines/calculadora-rtc-simples-nacional
+	url = https://github.com/ReceitaFederal/calculadora-rtc-simples-nacional.git
+[submodule "engines/calculadora-rtc-gerador-danfse"]
+	path = engines/calculadora-rtc-gerador-danfse
+	url = https://github.com/ReceitaFederal/calculadora-rtc-gerador-danfse.git

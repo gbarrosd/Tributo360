@@ -1,0 +1,9 @@
+line-length = 120
+target-version = "py313"
+extend-exclude = ["*/migrations/*"]
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+
+[lint.isort]
+known-first-party = ["config", "core", "contas", "empresas", "auditoria", "engines"]
