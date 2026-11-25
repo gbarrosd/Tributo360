@@ -95,6 +95,45 @@ def status_item(valor):
     return format_html('<span class="badge badge-{}">{}</span>', cor, texto)
 
 
+STATUS_DOCUMENTO = {
+    "recebido": ("secondary", "Recebido"),
+    "conforme": ("success", "Conforme"),
+    "divergente": ("danger", "Com divergência"),
+    "nao_conferido": ("secondary", "Sem conferência"),
+    "erro": ("warning", "Erro na conferência"),
+}
+
+STATUS_DIVERGENCIA = {
+    "aberta": ("danger", "Aberta"),
+    "justificada": ("info", "Justificada"),
+    "resolvida": ("success", "Resolvida"),
+}
+
+
+@register.simple_tag
+def status_documento(valor):
+    cor, texto = STATUS_DOCUMENTO.get(valor, ("secondary", valor))
+    return format_html('<span class="badge badge-{}">{}</span>', cor, texto)
+
+
+@register.simple_tag
+def status_divergencia(valor):
+    cor, texto = STATUS_DIVERGENCIA.get(valor, ("secondary", valor))
+    return format_html('<span class="badge badge-{}">{}</span>', cor, texto)
+
+
+@register.filter
+def item_do_dict(dados, chave):
+    return (dados or {}).get(chave)
+
+
+@register.filter
+def chave_formatada(chave):
+    """Chave de acesso em blocos de 4 dígitos, como no DANFE."""
+    chave = str(chave or "")
+    return " ".join(chave[i : i + 4] for i in range(0, len(chave), 4))
+
+
 ROTULOS_MEMORIA = {"cbs": "CBS", "ibsUF": "IBS estadual", "ibsMun": "IBS municipal", "is": "Imposto Seletivo"}
 
 

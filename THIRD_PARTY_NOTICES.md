@@ -15,7 +15,8 @@ desses motores (Java: majoritariamente Apache 2.0; Go: Apache 2.0 e MIT, incluin
 
 Dados de teste: `app/engines/tests/respostas/` guarda entradas e respostas gravadas dos motores (exemplos
 oficiais do `docs/exemplos.md` e do OpenAPI de cada um) e `nfse_autorizada_teste.xml`, copiado dos testes
-do gerador DANFSe. Todos MIT, Copyright 2026 Receita Federal do Brasil.
+do gerador DANFSe. `app/documentos/tests/exemplos/` guarda XMLs de NF-e e NFS-e copiados de
+`src/test/resources/xml` do motor do regime regular. Todos MIT, Copyright 2026 Receita Federal do Brasil.
 
 Front-end, copiados sem modificação para `app/static/vendor/` por `app/frontend/copiar-vendor.mjs`:
 [htmx](https://htmx.org) 2.0.4 (0BSD, Big Sky Software, com `LICENSE`), [Alpine.js](https://alpinejs.dev)

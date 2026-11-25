@@ -80,7 +80,7 @@ def test_todo_modelo_de_negocio_e_tenant():
         "SincronizacaoTabela",
         "ItemTabela",
     }
-    apps_do_produto = {"contas", "empresas", "auditoria", "engines", "simulacoes", "catalogo", "web"}
+    apps_do_produto = {"contas", "empresas", "auditoria", "engines", "simulacoes", "catalogo", "documentos", "web"}
     fora = [
         m.__name__
         for m in apps.get_models()

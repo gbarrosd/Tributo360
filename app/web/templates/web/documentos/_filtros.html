@@ -1,0 +1,7 @@
+{% load tributo %}<nav class="abas">
+  <a class="aba {% if not status %}aba-ativa{% endif %}" href="?{% if empresa_id %}empresa={{ empresa_id }}{% endif %}">Todas</a>
+  {% for valor, nome in status_choices %}{% if valor != "recebido" %}
+  <a class="aba {% if status == valor %}aba-ativa{% endif %}" href="?status={{ valor }}{% if empresa_id %}&empresa={{ empresa_id }}{% endif %}">{{ nome }}
+    {% with total=contagem|item_do_dict:valor %}{% if total %}<span class="badge {% if valor == 'divergente' %}badge-danger{% elif valor == 'conforme' %}badge-success{% elif valor == 'erro' %}badge-warning{% else %}badge-secondary{% endif %}">{{ total }}</span>{% endif %}{% endwith %}</a>
+  {% endif %}{% endfor %}
+</nav>

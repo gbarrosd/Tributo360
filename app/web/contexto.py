@@ -8,6 +8,11 @@ SECOES = {
     "motores": "motores",
     "escritorios": "escritorios",
     "escritorio-novo": "escritorios",
+    "documentos": "documentos",
+    "documentos-empresa": "documentos",
+    "documentos-importar": "documentos",
+    "lote": "documentos",
+    "documento": "documentos",
 }
 
 

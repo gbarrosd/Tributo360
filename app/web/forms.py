@@ -336,3 +336,52 @@ class SimulacaoSimplesForm(forms.Form):
             for c in TP_DOCS_SN
         ],
     )
+
+
+# --- Documentos fiscais --------------------------------------------------------------------------
+
+
+class VariosArquivosInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
+
+
+class VariosArquivosField(forms.FileField):
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("widget", VariosArquivosInput(attrs={"multiple": True, "accept": ".xml,.zip"}))
+        super().__init__(*args, **kwargs)
+
+    def clean(self, data, initial=None):
+        if isinstance(data, (list, tuple)):
+            return [super(VariosArquivosField, self).clean(d, initial) for d in data] or self.clean(None)
+        return [super().clean(data, initial)]
+
+
+class ImportarXmlForm(forms.Form):
+    arquivos = VariosArquivosField(
+        label="XMLs de NF-e ou um .zip",
+        help_text="Nota autorizada (nfeProc), NFe ou enviNFe. Até 200 notas por envio; .zip de até 50 MB.",
+    )
+
+
+class DivergenciaForm(forms.Form):
+    status = forms.ChoiceField(label="Situação", choices=[])
+    comentario = forms.CharField(label="Comentário", required=False, widget=forms.Textarea(attrs={"rows": 2}))
+
+    def __init__(self, *args, **kwargs):
+        from documentos.models import Divergencia
+
+        super().__init__(*args, **kwargs)
+        self.fields["status"].choices = Divergencia.Status.choices
+
+    def clean(self):
+        dados = super().clean()
+        if dados.get("status") == "justificada" and not (dados.get("comentario") or "").strip():
+            self.add_error("comentario", "Explique por que a diferença está correta.")
+        return dados
+
+
+class ToleranciaForm(forms.Form):
+    tolerancia = DecimalBR(
+        label="Tolerância (R$)", min_value=0, max_value=1000, decimal_places=2, max_digits=8,
+        widget=forms.TextInput(attrs={"inputmode": "decimal"}),
+    )  # fmt: skip

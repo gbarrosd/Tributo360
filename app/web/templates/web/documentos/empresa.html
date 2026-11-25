@@ -1,0 +1,36 @@
+{% extends "web/base.html" %}{% load tributo %}
+{% block titulo %}Notas · {{ empresa.razao_social }}{% endblock %}
+{% block conteudo %}
+<nav class="migalhas"><a href="{% url 'web:empresas' %}">Empresas</a> › <a href="{% url 'web:empresa' empresa.pk %}">{{ empresa.razao_social }}</a></nav>
+<div class="cabecalho-pagina">
+  <div><h1 class="titulo-pagina">Documentos fiscais</h1><p class="subtitulo">{{ total }} nota{{ total|pluralize }} de {{ empresa.razao_social }}</p></div>
+  {% if pode.cadastrar_itens %}<div class="acoes"><a class="btn btn-primary" href="{% url 'web:documentos-importar' empresa.pk %}">{% include "web/_icone.html" with nome="upload" %}Importar XML</a></div>{% endif %}
+</div>
+{% include "web/documentos/_filtros.html" %}
+<div class="card">
+  <form class="flex flex-wrap items-center gap-2 border-b border-borda p-3" method="get" {% include "web/_filtro_htmx.html" %}>
+    <input type="hidden" name="status" value="{{ status }}">
+    <div class="relative w-full sm:w-80">
+      <span class="pointer-events-none absolute inset-y-0 left-3 grid place-items-center text-suave">{% include "web/_icone.html" with nome="lupa" %}</span>
+      <input class="campo pl-9" name="q" value="{{ busca }}" placeholder="Número, chave ou nome" aria-label="Buscar nota">
+    </div>
+    <noscript><button class="btn btn-secondary">Buscar</button></noscript>
+  </form>
+  <div id="resultado">{% include "web/documentos/_tabela.html" with sem_empresa=True %}</div>
+</div>
+{% if lotes %}
+<div class="card mt-6">
+  <div class="card-header">Últimos envios</div>
+  <div class="divide-y divide-borda">
+    {% for l in lotes %}
+    <a class="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 text-texto no-underline hover:bg-superficie-2 hover:no-underline hover:text-texto" href="{% url 'web:lote' l.pk %}">
+      <span>{{ l.criado_em|date:"d/m/Y H:i" }} <span class="text-xs text-suave">por {{ l.enviado_por|default:"—" }}</span></span>
+      <span class="flex gap-1.5 text-xs"><span class="badge badge-success">{{ l.novos }} nova{{ l.novos|pluralize }}</span>
+        {% if l.duplicados %}<span class="badge badge-secondary">{{ l.duplicados }} repetida{{ l.duplicados|pluralize }}</span>{% endif %}
+        {% if l.recusados %}<span class="badge badge-danger">{{ l.recusados }} recusada{{ l.recusados|pluralize }}</span>{% endif %}</span>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

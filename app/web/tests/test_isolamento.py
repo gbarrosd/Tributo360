@@ -8,8 +8,10 @@ de pô-la aqui.
 import pytest
 from django.test import Client
 from django.urls import reverse
+from django.utils import timezone
 
 from catalogo.models import ItemCatalogo
+from documentos.models import Divergencia, DocumentoFiscal, LoteImportacao
 from simulacoes.models import AliquotaEfetivaSN
 from web.urls import urlpatterns
 
@@ -30,6 +32,13 @@ MATRIZ = {
     "aliquotas-remover": ("aliquota", ["post"]),
     "simular": ("empresa", ["get", "post"]),
     "simulacao": ("simulacao", ["get"]),
+    "documentos-empresa": ("empresa", ["get"]),
+    "documentos-importar": ("empresa", ["get", "post"]),
+    "lote": ("lote", ["get"]),
+    "documento": ("documento", ["get"]),
+    "documento-conferir": ("documento", ["post"]),
+    "documento-xml": ("documento", ["get"]),
+    "divergencia": ("divergencia", ["post"]),
 }
 
 
@@ -39,6 +48,22 @@ def cenario(criar_escritorio, criar_empresa, criar_item, criar_aliquotas_sn, cri
     escritorio_b, _, _ = criar_escritorio("B")
     empresa_b = criar_empresa(escritorio_b)
     simples_b = criar_empresa(escritorio_b, regime="simples", crt=1)
+    lote_b = LoteImportacao.objects.create(escritorio=escritorio_b, empresa=empresa_b, arquivos=1, novos=1)
+    documento_b = DocumentoFiscal.objects.create(
+        escritorio=escritorio_b,
+        empresa=empresa_b,
+        lote=lote_b,
+        modelo=DocumentoFiscal.Modelo.NFE,
+        papel=DocumentoFiscal.Papel.EMITIDA,
+        chave="4" * 44,
+        numero="1",
+        emissao=timezone.now(),
+        emitente_cnpj=empresa_b.cnpj,
+        hash_xml="0" * 64,
+        xml="<NFe/>",
+        status=DocumentoFiscal.Status.DIVERGENTE,
+    )
+    divergencia_b = Divergencia.objects.create(escritorio=escritorio_b, documento=documento_b, campo="cbs")
     cliente = Client()
     cliente.force_login(dono_a)
     return {
@@ -49,6 +74,9 @@ def cenario(criar_escritorio, criar_empresa, criar_item, criar_aliquotas_sn, cri
             "item": criar_item(empresa_b),
             "aliquota": criar_aliquotas_sn(simples_b),
             "simulacao": criar_simulacao(empresa_b),
+            "lote": lote_b,
+            "documento": documento_b,
+            "divergencia": divergencia_b,
         },
     }
 
@@ -75,6 +103,8 @@ def test_objetos_de_b_continuam_intactos(cenario):
     item = ItemCatalogo.objects.get(pk=cenario["objetos"]["item"].pk)
     assert item.ativo and item.status_classificacao == "pendente"
     assert AliquotaEfetivaSN.objects.filter(pk=cenario["objetos"]["aliquota"].pk).exists()
+    assert Divergencia.objects.get(pk=cenario["objetos"]["divergencia"].pk).status == "aberta"
+    assert DocumentoFiscal.objects.get(pk=cenario["objetos"]["documento"].pk).status == "divergente"
 
 
 def test_comparar_com_simulacao_de_b_responde_404(cenario, criar_simulacao):
