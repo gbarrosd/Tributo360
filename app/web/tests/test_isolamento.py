@@ -32,6 +32,8 @@ MATRIZ = {
     "aliquotas-remover": ("aliquota", ["post"]),
     "simular": ("empresa", ["get", "post"]),
     "simulacao": ("simulacao", ["get"]),
+    "simulacao-pdf": ("simulacao", ["get"]),
+    "simulacao-xlsx": ("simulacao", ["get"]),
     "documentos-empresa": ("empresa", ["get"]),
     "documentos-importar": ("empresa", ["get", "post"]),
     "lote": ("lote", ["get"]),

@@ -10,9 +10,13 @@
     <p class="subtitulo">{{ simulacao.get_tipo_display }} · {{ simulacao.empresa.razao_social }} ·
       feita por {{ simulacao.usuario|default:"—" }} em {{ simulacao.criado_em|date:"d/m/Y H:i" }}</p>
   </div>
-  {% if pode.simular and simulacao.empresa.ativa %}
-  <div class="acoes"><a class="btn btn-primary" href="{% url 'web:simular' simulacao.empresa_id %}?a_partir_de={{ simulacao.pk }}">Duplicar como novo cenário</a></div>
-  {% endif %}
+  <div class="acoes">
+    <a class="btn btn-outline" href="{% url 'web:simulacao-pdf' simulacao.pk %}">Baixar PDF</a>
+    <a class="btn btn-outline" href="{% url 'web:simulacao-xlsx' simulacao.pk %}">Baixar planilha</a>
+    {% if pode.simular and simulacao.empresa.ativa %}
+    <a class="btn btn-primary" href="{% url 'web:simular' simulacao.empresa_id %}?a_partir_de={{ simulacao.pk }}">Duplicar como novo cenário</a>
+    {% endif %}
+  </div>
 </div>
 
 {% if simulacao.simulado %}

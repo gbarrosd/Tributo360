@@ -2,7 +2,7 @@
 
 Plataforma SaaS para escritórios contábeis voltada à Reforma Tributária do Consumo (CBS, IBS e IS).
 
-Status: **Fase 3 (simulação pelo navegador)**. Descoberta e planejamento em `docs/descoberta.md` e `docs/planejamento.md`.
+Status: **Fase 5 (relatórios em PDF e planilha)**. Descoberta e planejamento em `docs/descoberta.md` e `docs/planejamento.md`.
 
 ## Estrutura
 
@@ -50,7 +50,8 @@ docker compose exec django python manage.py createsuperuser
 6. **Nova simulação**: escolha itens do catálogo ou digite os códigos. Data a partir de 2027 preenche
    CBS/IBS com a tabela do Tributo360 (cadastrada no admin, em *Alíquotas nominais*), e você pode editar.
 7. No resultado: memória de cálculo por item, origem de cada alíquota e versão do motor. **Duplicar como
-   novo cenário** muda uma premissa; em **Simulações**, marque 2 a 4 e **Compare**.
+   novo cenário** muda uma premissa; em **Simulações**, marque 2 a 4 e **Compare**. **Baixar PDF** e
+   **Baixar planilha** geram o relatório da simulação.
 
 ## Telas
 
@@ -62,6 +63,7 @@ docker compose exec django python manage.py createsuperuser
 | `/empresas/{id}/aliquotas-simples/` | Alíquotas efetivas do Simples por mês |
 | `/empresas/{id}/simular/` | Formulário de simulação (regular ou Simples, conforme a empresa) |
 | `/simulacoes/`, `/simulacoes/{id}/`, `/simulacoes/comparar/` | Histórico, resultado e comparação de cenários |
+| `/simulacoes/{id}/relatorio.pdf`, `.xlsx` | Relatório da simulação: totais, premissas, alíquotas com origem e memória de cálculo; versões no rodapé |
 | `/motores/` | Painel de versões dos motores |
 
 As telas validam pelos mesmos serializers e serviços da API, e as views de `web/views/` passam pelo
