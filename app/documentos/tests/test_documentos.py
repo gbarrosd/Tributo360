@@ -34,6 +34,7 @@ EXEMPLO_OFICIAL = EXEMPLOS / "nfe_valido.xml"
 # Alíquotas de teste de 2026 aplicadas pelo motor e reduções por cClassTrib (simplificação do motor real).
 ALIQUOTAS_2026 = {"cbs": Decimal("0.90"), "uf": Decimal("0.10"), "mun": Decimal("0.00")}
 REDUCOES = {"000001": Decimal("0"), "200034": Decimal("60")}
+SEM_INCIDENCIA = {"410029"}  # CST 410: o motor não calcula valores
 D = Decimal
 
 
@@ -55,6 +56,24 @@ def motor_que_calcula(request):
     corpo = json.loads(request.content)
     objetos, total_cbs, total_ibs, total_base = [], D("0"), D("0"), D("0")
     for item in corpo["itens"]:
+        if item.get("baseCalculo") is None:
+            objetos.append(
+                {
+                    "nObj": item["numero"],
+                    "estadoItem": "INCONSISTENCIA_ENTRADA",
+                    "erros": [{"code": "REG-025", "title": "Base de cálculo não informada"}],
+                }
+            )
+            continue
+        if item["cClassTrib"] in SEM_INCIDENCIA:  # o motor devolve só a classificação, sem valores
+            objetos.append(
+                {
+                    "nObj": item["numero"],
+                    "estadoItem": "CALCULADO",
+                    "tribCalc": {"IBSCBS": {"CST": item["cst"], "cClassTrib": item["cClassTrib"]}},
+                }
+            )
+            continue
         if item["cClassTrib"] not in REDUCOES:
             objetos.append(
                 {
@@ -117,17 +136,23 @@ def nfe_xml(numero, itens, emitente=CNPJ_EMPRESA, destinatario=CNPJ_CLIENTE, crt
     dets = []
     for n, item in enumerate(itens, start=1):
         ibs = item["ibs_uf"] + item["ibs_mun"]
-        dets.append(f"""
-      <det nItem="{n}"><prod><cProd>P{n:03d}</cProd><cEAN>SEM GTIN</cEAN><xProd>Produto {n}</xProd><NCM>{item.get("ncm", "22030000")}</NCM>
-        <CFOP>5102</CFOP><uCom>UN</uCom><qCom>1.0000</qCom><vUnCom>{item["base"]}</vUnCom><vProd>{item["base"]}</vProd>
-        <cEANTrib>SEM GTIN</cEANTrib><uTrib>UN</uTrib><qTrib>1.0000</qTrib><vUnTrib>{item["base"]}</vUnTrib><indTot>1</indTot></prod>
-        <imposto><IBSCBS><CST>{item.get("cst", "000")}</CST><cClassTrib>{item.get("c_class_trib", "000001")}</cClassTrib>
+        grupo = (
+            ""
+            if item.get("sem_grupo")
+            else f"""
           <gIBSCBS><vBC>{item["base"]}</vBC>
             <gIBSUF><pIBSUF>0.10</pIBSUF><vIBSUF>{item["ibs_uf"]}</vIBSUF></gIBSUF>
             <gIBSMun><pIBSMun>0.00</pIBSMun><vIBSMun>{item["ibs_mun"]}</vIBSMun></gIBSMun>
             <vIBS>{ibs}</vIBS>
             <gCBS><pCBS>0.90</pCBS><vCBS>{item["cbs"]}</vCBS></gCBS>
-          </gIBSCBS></IBSCBS></imposto></det>""")
+          </gIBSCBS>"""
+        )
+        dets.append(f"""
+      <det nItem="{n}"><prod><cProd>P{n:03d}</cProd><cEAN>SEM GTIN</cEAN><xProd>Produto {n}</xProd><NCM>{item.get("ncm", "22030000")}</NCM>
+        <CFOP>5102</CFOP><uCom>UN</uCom><qCom>1.0000</qCom><vUnCom>{item["base"]}</vUnCom><vProd>{item["base"]}</vProd>
+        <cEANTrib>SEM GTIN</cEANTrib><uTrib>UN</uTrib><qTrib>1.0000</qTrib><vUnTrib>{item["base"]}</vUnTrib><indTot>1</indTot></prod>
+        <imposto><IBSCBS><CST>{item.get("cst", "000")}</CST><cClassTrib>{item.get("c_class_trib", "000001")}</cClassTrib>{grupo}
+          </IBSCBS></imposto></det>""")
     base = sum(i["base"] for i in itens)
     cbs = sum(i["cbs"] for i in itens)
     ibs = sum(i["ibs_uf"] + i["ibs_mun"] for i in itens)
@@ -453,3 +478,56 @@ def test_importar_pelo_menu_documentos_escolhendo_a_empresa(cenario, motor, cria
     resposta = cenario["cliente"].post(url, {"empresa": str(cenario["empresa"].pk), "arquivos": [xml]})
     assert resposta.status_code == 302
     assert DocumentoFiscal.objects.get().empresa == cenario["empresa"]
+
+
+# --- CST sem grupo gIBSCBS (imunidade / não incidência) -------------------------------------------------
+
+
+def item_sem_incidencia(base):
+    zero = D("0")
+    return {"base": D(base), "cst": "410", "c_class_trib": "410029", "sem_grupo": True,
+            "cbs": zero, "ibs_uf": zero, "ibs_mun": zero}  # fmt: skip
+
+
+def test_cst_410_sem_grupo_gibscbs_fica_conforme(cenario, motor):
+    enviar(cenario, nfe_xml(50, [item_sem_incidencia("787.50"), item_sem_incidencia("12.30")]))
+    documento = DocumentoFiscal.objects.get()
+    assert documento.status == DocumentoFiscal.Status.CONFORME, documento.mensagens
+    assert not Divergencia.objects.exists()
+    enviado = motor.json_da_ultima("rr")
+    assert [i["baseCalculo"] for i in enviado["itens"]] == ["787.50", "12.30"]  # valor do item como base
+
+
+def test_nota_sem_destaque_onde_o_motor_calcula_diverge(cenario, motor):
+    item = item_sem_incidencia("1000.00") | {"cst": "000", "c_class_trib": "000001"}
+    enviar(cenario, nfe_xml(51, [item]))
+    documento = DocumentoFiscal.objects.get()
+    assert documento.status == DocumentoFiscal.Status.DIVERGENTE
+    cbs = Divergencia.objects.get(campo="cbs")
+    assert (cbs.valor_nota, cbs.valor_recalculado, cbs.diferenca) == (D("0"), D("9.00"), D("-9.00"))
+    assert cbs.mensagem == "A nota não destaca este valor."
+    assert not Divergencia.objects.filter(campo="base_calculo").exists()
+
+
+def test_divergencias_iguais_aparecem_juntas_e_sao_tratadas_de_uma_vez(cenario, motor):
+    itens = [item_certo("100.00", c_class_trib="999999") for _ in range(3)]
+    enviar(cenario, nfe_xml(52, itens))
+    enviar(cenario, nfe_xml(53, [item_certo("100.00", c_class_trib="999999")]))
+    documento = DocumentoFiscal.objects.get(numero="52")
+    outra_nota = Divergencia.objects.get(documento__numero="53")
+    pagina = cenario["cliente"].get(reverse("web:documento", args=[documento.pk])).content.decode()
+    assert "Itens 1, 2, 3" in pagina and pagina.count('name="mesmas"') == 2
+
+    primeira, *resto = documento.divergencias.order_by("numero_item")
+    resposta = cenario["cliente"].post(
+        reverse("web:divergencia", args=[primeira.pk]),
+        {
+            "status": "justificada",
+            "comentario": "cClassTrib novo",
+            "mesmas": [str(d.pk) for d in resto] + [str(outra_nota.pk)],
+        },
+    )
+    assert resposta.status_code == 302
+    assert set(documento.divergencias.values_list("status", flat=True)) == {"justificada"}
+    outra_nota.refresh_from_db()
+    assert outra_nota.status == "aberta"  # só as do mesmo documento

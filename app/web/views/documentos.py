@@ -186,6 +186,18 @@ def _comparacao(documento):
     return linhas
 
 
+def _agrupar(divergencias):
+    """Junta divergências iguais em itens diferentes (mesmo campo, valores, mensagem e situação) num só cartão."""
+    grupos = {}
+    for d in divergencias:
+        chave = (d.campo, d.valor_nota, d.valor_recalculado, d.diferenca, d.mensagem, d.status, d.comentario)
+        grupos.setdefault(chave, []).append(d)
+    return [
+        {"primeira": membros[0], "outras": membros[1:], "itens": [d.numero_item for d in membros if d.numero_item]}
+        for membros in grupos.values()
+    ]
+
+
 @tela()
 def documento(request, pk):
     documento = documento_da_requisicao(request, pk)
@@ -198,6 +210,7 @@ def documento(request, pk):
             "empresa": documento.empresa,
             "linhas": _comparacao(documento),
             "divergencias": divergencias,
+            "grupos": _agrupar(divergencias),
             "abertas": sum(1 for d in divergencias if d.status == Divergencia.Status.ABERTA),
             "status_divergencia": Divergencia.Status.choices,
         },
@@ -268,8 +281,13 @@ def divergencia(request, pk):
     divergencia = get_object_or_404(Divergencia.tenant(request).select_related("documento"), pk=pk)
     form = DivergenciaForm(request.POST)
     if form.is_valid():
-        servicos.tratar_divergencia(request, divergencia, form.cleaned_data["status"], form.cleaned_data["comentario"])
-        messages.success(request, f"Divergência marcada como {divergencia.get_status_display().lower()}.")
+        # As iguais do mesmo documento, tratadas juntas (o cartão agrupa itens com a mesma divergência).
+        mesmas = [v for v in request.POST.getlist("mesmas") if _uuid(v)]
+        alvos = [divergencia, *Divergencia.tenant(request).filter(documento=divergencia.documento, pk__in=mesmas)]
+        for alvo in alvos:
+            servicos.tratar_divergencia(request, alvo, form.cleaned_data["status"], form.cleaned_data["comentario"])
+        quantas = f"{len(alvos)} divergências marcadas" if len(alvos) > 1 else "Divergência marcada"
+        messages.success(request, f"{quantas} como {divergencia.get_status_display().lower()}.")
     else:
         for erros in form.errors.values():
             for erro in erros:
