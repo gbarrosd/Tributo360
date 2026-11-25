@@ -15,6 +15,8 @@ from defusedxml import DefusedXmlException
 from defusedxml.ElementTree import fromstring
 
 NS = "{http://www.portalfiscal.inf.br/nfe}"
+TIPO_XSD = "nfe"
+NOME = "NF-e"
 
 # Código IBGE da UF (dois primeiros dígitos do município) → sigla.
 UF_POR_CODIGO = {
@@ -64,6 +66,7 @@ class ItemNota:
     ibs: Decimal | None = None
     imposto_seletivo: Decimal | None = None
     seletivo: dict = field(default_factory=dict)  # CSTIS, cClassTribIS, vBCIS, pIS, qTrib, uTrib
+    nbs: str = ""  # só na NFS-e
 
     @property
     def tem_ibscbs(self):
@@ -201,19 +204,27 @@ def _nota(nfe):
     )
 
 
-def ler(conteudo: bytes) -> list[NotaLida]:
-    """Notas de um arquivo: aceita NFe, nfeProc (nota autorizada) e enviNFe (lote com uma ou mais NFe)."""
+def analisar(conteudo: bytes):
+    """Elemento raiz do XML, lido com segurança. Erros de sintaxe trazem linha e coluna."""
     try:
-        raiz = fromstring(conteudo, forbid_dtd=True)
+        return fromstring(conteudo, forbid_dtd=True)
     except ParseError as erro:
         linha, coluna = getattr(erro, "position", (None, None))
         raise XmlInvalido(f"XML malformado: {erro}", linha, (coluna + 1) if coluna is not None else None) from None
     except DefusedXmlException:
         raise XmlInvalido("XML com DTD ou entidades não é aceito.") from None
-    if raiz.tag == f"{NS}NFe":
-        nfes = [raiz]
-    else:
-        nfes = raiz.findall(f".//{NS}NFe")
+
+
+def notas(raiz) -> list[NotaLida]:
+    """Notas sob a raiz: aceita NFe, nfeProc (nota autorizada) e enviNFe (lote com uma ou mais NFe)."""
+    nfes = [raiz] if raiz.tag == f"{NS}NFe" else raiz.findall(f".//{NS}NFe")
     if not nfes:
-        raise XmlInvalido("O arquivo não contém uma NF-e (esperado NFe, nfeProc ou enviNFe no namespace da NF-e).")
+        raise XmlInvalido(
+            "O arquivo não contém uma NF-e nem uma NFS-e nacional "
+            "(esperado NFe, nfeProc ou enviNFe, ou NFSe no namespace da NFS-e nacional)."
+        )
     return [_nota(nfe) for nfe in nfes]
+
+
+def ler(conteudo: bytes) -> list[NotaLida]:
+    return notas(analisar(conteudo))

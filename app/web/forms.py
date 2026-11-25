@@ -358,8 +358,9 @@ class VariosArquivosField(forms.FileField):
 
 class ImportarXmlForm(forms.Form):
     arquivos = VariosArquivosField(
-        label="XMLs de NF-e ou um .zip",
-        help_text="Nota autorizada (nfeProc), NFe ou enviNFe. Até 200 notas por envio; .zip de até 50 MB.",
+        label="XMLs de NF-e, NFS-e ou um .zip",
+        help_text="NF-e autorizada (nfeProc), NFe ou enviNFe, ou NFS-e nacional (NFSe). "
+        "Até 200 notas por envio; .zip de até 50 MB.",
     )
 
 
@@ -385,3 +386,25 @@ class ToleranciaForm(forms.Form):
         label="Tolerância (R$)", min_value=0, max_value=1000, decimal_places=2, max_digits=8,
         widget=forms.TextInput(attrs={"inputmode": "decimal"}),
     )  # fmt: skip
+
+
+SITUACOES_DANFSE = [("0", "Válida"), ("1", "Substituída"), ("2", "Cancelada")]
+
+
+class DanfseForm(forms.Form):
+    situacao = forms.ChoiceField(label="Situação impressa", choices=SITUACOES_DANFSE, initial="0")
+    canhoto = forms.BooleanField(label="Incluir canhoto de recebimento", required=False)
+
+
+class DanfseAvulsoForm(DanfseForm):
+    arquivo = forms.FileField(label="XML da NFS-e nacional autorizada", help_text="Arquivo .xml de até 5 MB.")
+
+    field_order = ["arquivo", "situacao", "canhoto"]
+
+    def clean_arquivo(self):
+        from documentos.servicos import MAX_BYTES_XML
+
+        arquivo = self.cleaned_data["arquivo"]
+        if arquivo.size > MAX_BYTES_XML:
+            raise forms.ValidationError("Arquivo maior que 5 MB.")
+        return arquivo.read()

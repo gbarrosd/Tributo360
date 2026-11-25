@@ -45,5 +45,7 @@ urlpatterns = [
     path("documentos/<uuid:pk>/", documentos.documento, name="documento"),
     path("documentos/<uuid:pk>/conferir/", documentos.reconferir, name="documento-conferir"),
     path("documentos/<uuid:pk>/xml/", documentos.documento_xml, name="documento-xml"),
+    path("documentos/<uuid:pk>/danfse/", documentos.documento_danfse, name="documento-danfse"),
+    path("danfse/", documentos.danfse_avulso, name="danfse"),
     path("divergencias/<uuid:pk>/", documentos.divergencia, name="divergencia"),
 ]

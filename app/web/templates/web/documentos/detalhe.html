@@ -1,5 +1,5 @@
 {% extends "web/base.html" %}{% load tributo %}
-{% block titulo %}NF-e {{ documento.numero }}{% endblock %}
+{% block titulo %}{{ documento.get_modelo_display }} {{ documento.numero }}{% endblock %}
 {% block conteudo %}
 <nav class="migalhas"><a href="{% url 'web:empresa' empresa.pk %}">{{ empresa.razao_social }}</a> › <a href="{% url 'web:documentos-empresa' empresa.pk %}">Documentos</a></nav>
 <div class="cabecalho-pagina">
@@ -10,6 +10,7 @@
   </div>
   <div class="acoes">
     <a class="btn btn-secondary" href="{% url 'web:documento-xml' documento.pk %}">Baixar XML</a>
+    {% if documento.modelo == "nfse" and pode.simular %}<a class="btn btn-secondary" href="{% url 'web:documento-danfse' documento.pk %}" target="_blank" rel="noopener">{% include "web/_icone.html" with nome="pdf" %}DANFSe (PDF)</a>{% endif %}
     {% if pode.cadastrar_itens %}<form method="post" action="{% url 'web:documento-conferir' documento.pk %}" x-data="{ enviando: false }" @submit="enviando = true">{% csrf_token %}
       <button class="btn btn-primary" :disabled="enviando"><span x-show="!enviando">Conferir de novo</span><span x-show="enviando" x-cloak>Conferindo…</span></button></form>{% endif %}
   </div>
@@ -22,8 +23,8 @@
 <div class="grid gap-5 lg:grid-cols-3 mb-6">
   <div class="card card-body lg:col-span-2">
     <dl class="definicoes">
-      <dt>Emitente</dt><dd>{{ documento.emitente_nome }} <span class="font-mono text-xs text-suave">{{ documento.emitente_cnpj }} · CRT {{ documento.emitente_crt|default:"—" }}</span></dd>
-      <dt>Destinatário</dt><dd>{{ documento.destinatario_nome|default:"—" }} <span class="font-mono text-xs text-suave">{{ documento.destinatario_cnpj }}</span></dd>
+      <dt>{% if documento.modelo == "nfse" %}Prestador{% else %}Emitente{% endif %}</dt><dd>{{ documento.emitente_nome }} <span class="font-mono text-xs text-suave">{{ documento.emitente_cnpj }} · {% if documento.modelo == "nfse" %}{% if documento.emitente_crt == "3" %}não optante do Simples{% elif documento.emitente_crt %}Simples Nacional/MEI{% else %}regime não informado{% endif %}{% else %}CRT {{ documento.emitente_crt|default:"—" }}{% endif %}</span></dd>
+      <dt>{% if documento.modelo == "nfse" %}Tomador{% else %}Destinatário{% endif %}</dt><dd>{{ documento.destinatario_nome|default:"—" }} <span class="font-mono text-xs text-suave">{{ documento.destinatario_cnpj }}</span></dd>
       <dt>Para a empresa</dt><dd>{{ documento.get_papel_display }}</dd>
       <dt>Emissão</dt><dd>{{ documento.emissao|date:"d/m/Y H:i" }}</dd>
       <dt>Local do fato gerador</dt><dd>{{ documento.uf }} · IBGE {{ documento.municipio }}</dd>
@@ -53,7 +54,7 @@
       <td rowspan="{{ linha.valores|length }}" class="align-top min-w-48 border-r border-borda"><div class="font-medium">{{ item.numero }}. {{ item.descricao }}</div>
         <div class="codigo">{{ item.codigo }}</div>
         {% if linha.calculo %}<div class="mt-1 text-xs text-erro">{{ linha.calculo.mensagem }}</div>{% endif %}</td>
-      <td rowspan="{{ linha.valores|length }}" class="align-top codigo whitespace-nowrap border-r border-borda">NCM {{ item.ncm|default:"—" }}<br>CST {{ item.cst|default:"—" }} · {{ item.c_class_trib|default:"—" }}</td>
+      <td rowspan="{{ linha.valores|length }}" class="align-top codigo whitespace-nowrap border-r border-borda">{% if item.nbs %}NBS {{ item.nbs }}{% else %}NCM {{ item.ncm|default:"—" }}{% endif %}<br>CST {{ item.cst|default:"—" }} · {{ item.c_class_trib|default:"—" }}</td>
       {% endif %}
       <td class="text-sm whitespace-nowrap">{{ v.nome }}</td>
       <td class="num">{{ v.nota|moeda }}</td>

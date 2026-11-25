@@ -1,0 +1,22 @@
+{% extends "web/base.html" %}
+{% block titulo %}Gerar DANFSe{% endblock %}
+{% block conteudo %}
+<div class="cabecalho-pagina"><div><h1 class="titulo-pagina">Gerar DANFSe</h1>
+  <p class="subtitulo">Envie o XML de uma NFS-e nacional autorizada e baixe o PDF. A nota não é importada nem conferida.</p></div></div>
+<div class="grid gap-5 lg:grid-cols-2">
+  <form method="post" enctype="multipart/form-data" class="card card-body space-y-4" novalidate
+        x-data="{ enviando: false }" @submit="enviando = true; setTimeout(() => enviando = false, 4000)">{% csrf_token %}
+    {% include "web/_erros_form.html" %}
+    {% include "web/_campo.html" with campo=form.arquivo %}
+    {% include "web/_campo.html" with campo=form.situacao %}
+    {% include "web/_campo.html" with campo=form.canhoto %}
+    <button class="btn btn-primary" :disabled="enviando">{% include "web/_icone.html" with nome="pdf" %}<span x-show="!enviando">Gerar PDF</span><span x-show="enviando" x-cloak>Gerando…</span></button>
+  </form>
+  <div class="card card-body text-sm space-y-3">
+    <div class="font-semibold">Sobre o DANFSe</div>
+    <p class="text-suave">O PDF sai do gerador oficial da Receita Federal. A situação impressa (válida, substituída ou cancelada) é a que você escolher aqui, porque o XML não diz se a nota foi cancelada depois.</p>
+    <p class="text-suave">Para uma NFS-e já importada, use o botão <strong class="text-texto">DANFSe (PDF)</strong> na tela da nota.</p>
+    <p class="text-xs text-suave">O gerador oficial tem problemas conhecidos nos campos de IBS/CBS do leiaute da NT 009 e nos totais do Simples. Confira os valores da reforma na tela da nota importada, não no PDF.</p>
+  </div>
+</div>
+{% endblock %}

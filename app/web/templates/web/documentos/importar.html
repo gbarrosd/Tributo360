@@ -2,7 +2,7 @@
 {% block titulo %}Importar XML · {{ empresa.razao_social }}{% endblock %}
 {% block conteudo %}
 <nav class="migalhas"><a href="{% url 'web:empresa' empresa.pk %}">{{ empresa.razao_social }}</a> › <a href="{% url 'web:documentos-empresa' empresa.pk %}">Documentos</a></nav>
-<div class="cabecalho-pagina"><div><h1 class="titulo-pagina">Importar XML de NF-e</h1>
+<div class="cabecalho-pagina"><div><h1 class="titulo-pagina">Importar XML de NF-e ou NFS-e</h1>
   <p class="subtitulo">Cada nota é validada no leiaute, recalculada pelo motor oficial e comparada item a item com o que está destacado.</p></div></div>
 <div class="grid gap-5 lg:grid-cols-2">
   <form method="post" enctype="multipart/form-data" class="card card-body space-y-4" novalidate
@@ -30,7 +30,7 @@
       <li>O motor recalcula CBS, IBS e Imposto Seletivo com a mesma classificação da nota (CST e cClassTrib). A partir de 2027 as alíquotas vêm da tabela do Tributo360.</li>
       <li>Cada valor com diferença maior que a tolerância (R$ {{ membership_ativa.escritorio.tolerancia_divergencia|floatformat:2 }}) vira uma divergência para justificar ou resolver.</li>
     </ol>
-    <p class="text-xs text-suave">Notas de emitente do Simples Nacional são importadas, mas a conferência delas entra numa próxima etapa.</p>
+    <p class="text-xs text-suave">Notas de emitente do Simples Nacional (NF-e com CRT 1/4 ou NFS-e de prestador optante ou MEI) são importadas, mas a conferência delas entra numa próxima etapa.</p>
   </div>
 </div>
 {% endblock %}
