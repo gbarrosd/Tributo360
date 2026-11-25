@@ -36,6 +36,8 @@ urlpatterns = [
     path("simulacoes/", simulacoes.historico, name="historico"),
     path("simulacoes/comparar/", simulacoes.comparar, name="comparar"),
     path("simulacoes/<uuid:pk>/", simulacoes.detalhe, name="simulacao"),
+    path("simulacoes/<uuid:pk>/relatorio.pdf", simulacoes.relatorio_pdf, name="simulacao-pdf"),
+    path("simulacoes/<uuid:pk>/relatorio.xlsx", simulacoes.relatorio_xlsx, name="simulacao-xlsx"),
     # Documentos fiscais (Fase 4)
     path("documentos/", documentos.todos, name="documentos"),
     path("documentos/importar/", documentos.importar_escolhendo, name="documentos-importar-geral"),

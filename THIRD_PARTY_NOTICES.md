@@ -22,7 +22,12 @@ Front-end, copiados sem modificação para `app/static/vendor/` por `app/fronten
 [htmx](https://htmx.org) 2.0.4 (0BSD, Big Sky Software, com `LICENSE`), [Alpine.js](https://alpinejs.dev)
 3.14.8 (MIT, Caleb Porzio and contributors) e as fontes [IBM Plex Sans e IBM Plex Mono](https://github.com/IBM/plex)
 via Fontsource 5.2.6 (SIL Open Font License 1.1, IBM Corp., com `LICENSE-IBM-Plex.txt`). O CSS
-`app/static/web/app.css` é gerado pelo [Tailwind CSS](https://tailwindcss.com) 4.1.11 (MIT, Tailwind Labs). Leitura de XLSX:
+`app/static/web/app.css` é gerado pelo [Tailwind CSS](https://tailwindcss.com) 4.1.11 (MIT, Tailwind Labs). Leitura e geração de XLSX:
 [openpyxl](https://openpyxl.readthedocs.io) (MIT).
+
+Relatórios em PDF: [ReportLab](https://www.reportlab.com/opensource/) (BSD, ReportLab Europe Ltd.). As fontes
+em `app/web/relatorios/fontes/` são IBM Plex Sans (Regular, SemiBold) e IBM Plex Mono (Regular) do pacote
+npm `@ibm/plex` 6.4.1, só convertidas de WOFF2 para TTF sem alterar glifos nem nome (SIL Open Font License
+1.1, IBM Corp., Reserved Font Name "Plex", com `LICENSE-IBM-Plex.txt`).
 
 Pendente antes do lançamento: validação jurídica e página "Componentes de código aberto" no produto.

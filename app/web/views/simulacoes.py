@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime, time
 
 from django.contrib import messages
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
@@ -32,6 +32,7 @@ from ..forms import (
     SimulacaoSimplesForm,
     _achatar,
 )
+from ..relatorios import simulacao as relatorio_simulacao
 from .empresas import empresa_da_requisicao
 
 MAX_COMPARACAO = 4
@@ -228,6 +229,33 @@ def detalhe(request, pk):
             "avisos_motor": (simulacao.resposta_bruta or {}).get("resolucaoAliquotas", {}).get("avisos") or [],
         },
     )
+
+
+TIPOS_ARQUIVO = {
+    "pdf": "application/pdf",
+    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+}
+
+
+def arquivo(conteudo, nome, extensao):
+    resposta = HttpResponse(conteudo, content_type=TIPOS_ARQUIVO[extensao])
+    resposta["Content-Disposition"] = f'attachment; filename="{nome}"'
+    resposta["Cache-Control"] = "no-store"
+    return resposta
+
+
+@tela()
+def relatorio_pdf(request, pk):
+    simulacao = _simulacao_da_requisicao(request, pk)
+    conteudo = relatorio_simulacao.gerar_pdf(request, simulacao)
+    return arquivo(conteudo, relatorio_simulacao.nome_arquivo(simulacao, "pdf"), "pdf")
+
+
+@tela()
+def relatorio_xlsx(request, pk):
+    simulacao = _simulacao_da_requisicao(request, pk)
+    conteudo = relatorio_simulacao.gerar_xlsx(request, simulacao)
+    return arquivo(conteudo, relatorio_simulacao.nome_arquivo(simulacao, "xlsx"), "xlsx")
 
 
 @tela()

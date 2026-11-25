@@ -5,4 +5,5 @@ celery[redis]~=5.5
 httpx~=0.28
 gunicorn~=23.0
 openpyxl~=3.1
+reportlab~=5.0
 defusedxml~=0.7
