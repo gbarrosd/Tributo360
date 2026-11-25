@@ -14,7 +14,6 @@ from pathlib import Path
 
 import httpx
 import pytest
-from django.conf import settings
 from django.test import Client
 from django.urls import reverse
 
@@ -27,10 +26,10 @@ CNPJ_CLIENTE = "22333444000172"
 CNPJ_FORNECEDOR = "33444555000163"
 CAMINHO_CALCULO = "/api/calculadora/observabilidade/regime-geral"
 CAMINHO_VALIDACAO = "/api/calculadora/xml/validate"
-EXEMPLO_OFICIAL = (
-    Path(settings.BASE_DIR).parent
-    / "engines/calculadora-rtc-regime-regular/src/test/resources/xml/nfe/valido/nota/nfe_valido.xml"
-)
+# Cópia dos exemplos de src/test/resources/xml do motor do regime regular (MIT), para o teste não depender
+# do submódulo, que o job de testes não baixa.
+EXEMPLOS = Path(__file__).parent / "exemplos"
+EXEMPLO_OFICIAL = EXEMPLOS / "nfe_valido.xml"
 
 # Alíquotas de teste de 2026 aplicadas pelo motor e reduções por cClassTrib (simplificação do motor real).
 ALIQUOTAS_2026 = {"cbs": Decimal("0.90"), "uf": Decimal("0.10"), "mun": Decimal("0.00")}
