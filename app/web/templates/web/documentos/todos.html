@@ -1,0 +1,40 @@
+{% extends "web/base.html" %}{% load tributo %}
+{% block titulo %}Documentos{% endblock %}
+{% block conteudo %}
+<div class="cabecalho-pagina">
+  <div><h1 class="titulo-pagina">Documentos fiscais</h1>
+    <p class="subtitulo">NF-e importadas e conferidas pelo motor oficial. Para importar, abra a empresa e use <strong>Importar XML</strong>.</p></div>
+</div>
+<div class="grid grid-cols-2 gap-3 lg:grid-cols-4 mb-6">
+  <div class="kpi"><span class="kpi-rotulo">Notas conferidas</span><span class="kpi-valor">{{ conferidas }}</span></div>
+  <div class="kpi"><span class="kpi-rotulo">Conformes</span><span class="kpi-valor text-ok">{{ contagem.conforme|default:0 }}</span></div>
+  <div class="kpi"><span class="kpi-rotulo">Com divergência</span><span class="kpi-valor {% if contagem.divergente %}text-erro{% endif %}">{{ contagem.divergente|default:0 }}</span></div>
+  <div class="kpi"><span class="kpi-rotulo">Divergências abertas</span><span class="kpi-valor {% if divergencias_abertas %}text-erro{% endif %}">{{ divergencias_abertas }}</span></div>
+</div>
+{% include "web/documentos/_filtros.html" %}
+<div class="card">
+  <form class="flex flex-wrap items-center gap-2 border-b border-borda p-3" method="get" {% include "web/_filtro_htmx.html" %}>
+    <input type="hidden" name="status" value="{{ status }}">
+    <select class="campo w-full sm:w-72" name="empresa" aria-label="Empresa">
+      <option value="">Todas as empresas</option>
+      {% for e in empresas %}<option value="{{ e.pk }}" {% if empresa_id == e.pk|stringformat:"s" %}selected{% endif %}>{{ e.razao_social }}</option>{% endfor %}
+    </select>
+    <div class="relative w-full sm:w-72">
+      <span class="pointer-events-none absolute inset-y-0 left-3 grid place-items-center text-suave">{% include "web/_icone.html" with nome="lupa" %}</span>
+      <input class="campo pl-9" name="q" value="{{ busca }}" placeholder="Número, chave ou nome" aria-label="Buscar nota">
+    </div>
+    <noscript><button class="btn btn-secondary">Filtrar</button></noscript>
+  </form>
+  <div id="resultado">{% include "web/documentos/_tabela.html" %}</div>
+</div>
+{% if pode.resolver_divergencia %}
+<form method="post" action="{% url 'web:tolerancia' %}" class="card card-body mt-6 flex flex-wrap items-end gap-3 max-w-2xl">{% csrf_token %}
+  <div class="min-w-0 flex-1">
+    <div class="font-semibold">Tolerância da conferência</div>
+    <p class="text-xs text-suave">Diferença máxima, por valor, entre o destacado na nota e o recalculado pelo motor. Hoje: R$ {{ membership_ativa.escritorio.tolerancia_divergencia|numero }}.</p>
+  </div>
+  <div class="w-32"><label class="form-label" for="id_tolerancia">{{ tolerancia_form.tolerancia.label }}</label>{{ tolerancia_form.tolerancia|controle:"font-mono" }}</div>
+  <button class="btn btn-secondary">Salvar</button>
+</form>
+{% endif %}
+{% endblock %}

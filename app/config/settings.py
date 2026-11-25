@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "engines",
     "simulacoes",
     "catalogo",
+    "documentos",
     "web",
 ]
 

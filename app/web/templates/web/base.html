@@ -38,6 +38,8 @@
       <a class="nav-link {% if secao_menu == 'inicio' %}nav-ativo{% endif %}" href="{% url 'web:inicio' %}">{% include "web/_icone.html" with nome="painel" %}Painel</a>
       <a class="nav-link {% if secao_menu == 'empresas' %}nav-ativo{% endif %}" href="{% url 'web:empresas' %}">{% include "web/_icone.html" with nome="empresas" %}Empresas</a>
       <a class="nav-link {% if secao_menu == 'simulacoes' %}nav-ativo{% endif %}" href="{% url 'web:historico' %}">{% include "web/_icone.html" with nome="simulacoes" %}Simulações</a>
+      <div class="nav-secao">Fiscal</div>
+      <a class="nav-link {% if secao_menu == 'documentos' %}nav-ativo{% endif %}" href="{% url 'web:documentos' %}">{% include "web/_icone.html" with nome="documentos" %}Documentos</a>
       <div class="nav-secao">Sistema</div>
       <a class="nav-link {% if secao_menu == 'motores' %}nav-ativo{% endif %}" href="{% url 'web:motores' %}">{% include "web/_icone.html" with nome="motores" %}Motores</a>
       <a class="nav-link {% if secao_menu == 'escritorios' %}nav-ativo{% endif %}" href="{% url 'web:escritorios' %}">{% include "web/_icone.html" with nome="escritorios" %}Escritórios</a>

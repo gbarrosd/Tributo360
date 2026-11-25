@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .views import aliquotas, catalogo, conta, empresas, simulacoes
+from .views import aliquotas, catalogo, conta, documentos, empresas, simulacoes
 
 app_name = "web"
 
@@ -36,4 +36,14 @@ urlpatterns = [
     path("simulacoes/", simulacoes.historico, name="historico"),
     path("simulacoes/comparar/", simulacoes.comparar, name="comparar"),
     path("simulacoes/<uuid:pk>/", simulacoes.detalhe, name="simulacao"),
+    # Documentos fiscais (Fase 4)
+    path("documentos/", documentos.todos, name="documentos"),
+    path("documentos/tolerancia/", documentos.tolerancia, name="tolerancia"),
+    path("empresas/<uuid:pk>/documentos/", documentos.da_empresa, name="documentos-empresa"),
+    path("empresas/<uuid:pk>/documentos/importar/", documentos.importar, name="documentos-importar"),
+    path("lotes/<uuid:pk>/", documentos.lote, name="lote"),
+    path("documentos/<uuid:pk>/", documentos.documento, name="documento"),
+    path("documentos/<uuid:pk>/conferir/", documentos.reconferir, name="documento-conferir"),
+    path("documentos/<uuid:pk>/xml/", documentos.documento_xml, name="documento-xml"),
+    path("divergencias/<uuid:pk>/", documentos.divergencia, name="divergencia"),
 ]

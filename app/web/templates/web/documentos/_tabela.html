@@ -1,0 +1,21 @@
+{% load tributo %}<div class="tabela-wrap">
+<table class="tabela tabela-hover">
+  <thead><tr><th>Nota</th>{% if not sem_empresa %}<th>Empresa</th>{% endif %}<th>Emissão</th><th>Contraparte</th><th class="num">CBS</th><th class="num">IBS</th><th>Situação</th></tr></thead>
+  <tbody>
+  {% for d in documentos %}
+  <tr>
+    <td class="min-w-40"><a class="font-medium" href="{% url 'web:documento' d.pk %}">{{ d.get_modelo_display }} {{ d.numero }}<span class="text-suave">/{{ d.serie }}</span></a>
+      <div class="text-xs text-suave whitespace-nowrap">{% if d.papel == "emitida" %}Saída{% else %}Entrada{% endif %} · {{ d.itens|length }} item(ns)</div></td>
+    {% if not sem_empresa %}<td class="text-sm min-w-40">{{ d.empresa.razao_social }}</td>{% endif %}
+    <td class="text-sm whitespace-nowrap">{{ d.emissao|date:"d/m/Y" }}</td>
+    <td class="text-sm min-w-48">{% if d.papel == "emitida" %}{{ d.destinatario_nome|default:"—" }}{% else %}{{ d.emitente_nome }}{% endif %}</td>
+    <td class="num">{{ d.totais.cbs|moeda }}</td>
+    <td class="num">{{ d.totais.ibs|moeda }}</td>
+    <td class="whitespace-nowrap">{% status_documento d.status %}{% if d.abertas %} <span class="badge badge-danger">{{ d.abertas }} aberta{{ d.abertas|pluralize }}</span>{% endif %}</td>
+  </tr>
+  {% empty %}
+  <tr><td colspan="7" class="vazio">Nenhuma nota aqui.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>

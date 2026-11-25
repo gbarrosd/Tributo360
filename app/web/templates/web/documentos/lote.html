@@ -1,0 +1,31 @@
+{% extends "web/base.html" %}{% load tributo %}
+{% block titulo %}Envio de {{ lote.criado_em|date:"d/m/Y H:i" }}{% endblock %}
+{% block conteudo %}
+<nav class="migalhas"><a href="{% url 'web:empresa' empresa.pk %}">{{ empresa.razao_social }}</a> › <a href="{% url 'web:documentos-empresa' empresa.pk %}">Documentos</a></nav>
+<div class="cabecalho-pagina">
+  <div><h1 class="titulo-pagina">Resultado do envio</h1>
+    <p class="subtitulo">{{ lote.arquivos }} arquivo{{ lote.arquivos|pluralize }} · {{ lote.criado_em|date:"d/m/Y H:i" }} · por {{ lote.enviado_por|default:"—" }}</p></div>
+  {% if pode.cadastrar_itens %}<div class="acoes"><a class="btn btn-secondary" href="{% url 'web:documentos-importar' empresa.pk %}">Enviar mais</a>
+    <a class="btn btn-primary" href="{% url 'web:documentos-empresa' empresa.pk %}">Ver notas da empresa</a></div>{% endif %}
+</div>
+<div class="grid grid-cols-3 gap-3 mb-6 max-w-2xl">
+  <div class="kpi"><span class="kpi-rotulo">Novas</span><span class="kpi-valor text-ok">{{ lote.novos }}</span></div>
+  <div class="kpi"><span class="kpi-rotulo">Já importadas</span><span class="kpi-valor">{{ lote.duplicados }}</span></div>
+  <div class="kpi"><span class="kpi-rotulo">Recusadas</span><span class="kpi-valor {% if lote.recusados %}text-erro{% endif %}">{{ lote.recusados }}</span></div>
+</div>
+<div class="card tabela-wrap">
+<table class="tabela">
+  <thead><tr><th>Arquivo</th><th>Resultado</th><th>Detalhe</th></tr></thead>
+  <tbody>
+  {% for l in linhas %}
+  <tr>
+    <td class="font-mono text-xs break-all min-w-48">{{ l.arquivo }}</td>
+    <td class="whitespace-nowrap">{% if l.resultado == "novo" %}{% status_documento l.documento.status|default:l.status %}{% elif l.resultado == "duplicado" %}<span class="badge badge-secondary">Já importada</span>{% else %}<span class="badge badge-danger">Recusada</span>{% endif %}</td>
+    <td class="text-sm min-w-64">{{ l.mensagem }}{% if l.linha %} <span class="font-mono text-xs text-suave">(linha {{ l.linha }}{% if l.coluna %}, coluna {{ l.coluna }}{% endif %})</span>{% endif %}
+      {% if l.documento %} <a href="{% url 'web:documento' l.documento.pk %}">abrir</a>{% elif l.documento_id %} <a href="{% url 'web:documento' l.documento_id %}">abrir</a>{% endif %}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

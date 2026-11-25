@@ -10,6 +10,7 @@
   </div>
   <div class="acoes">
     {% if pode.editar_empresas %}<a class="btn btn-secondary" href="{% url 'web:empresa-editar' empresa.pk %}">Editar</a>{% endif %}
+    <a class="btn btn-secondary" href="{% url 'web:documentos-empresa' empresa.pk %}">{% include "web/_icone.html" with nome="documentos" %}Documentos fiscais</a>
     {% if pode.simular and empresa.ativa %}<a class="btn btn-primary" href="{% url 'web:simular' empresa.pk %}">Nova simulação</a>{% endif %}
   </div>
 </div>

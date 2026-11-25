@@ -1,0 +1,101 @@
+{% extends "web/base.html" %}{% load tributo %}
+{% block titulo %}NF-e {{ documento.numero }}{% endblock %}
+{% block conteudo %}
+<nav class="migalhas"><a href="{% url 'web:empresa' empresa.pk %}">{{ empresa.razao_social }}</a> › <a href="{% url 'web:documentos-empresa' empresa.pk %}">Documentos</a></nav>
+<div class="cabecalho-pagina">
+  <div>
+    <h1 class="titulo-pagina">{{ documento.get_modelo_display }} {{ documento.numero }}<span class="text-suave font-normal">/{{ documento.serie }}</span> {% status_documento documento.status %}
+      {% if abertas %}<span class="badge badge-danger">{{ abertas }} divergência{{ abertas|pluralize:"s" }} aberta{{ abertas|pluralize }}</span>{% endif %}</h1>
+    <p class="subtitulo font-mono">{{ documento.chave|chave_formatada }}</p>
+  </div>
+  <div class="acoes">
+    <a class="btn btn-secondary" href="{% url 'web:documento-xml' documento.pk %}">Baixar XML</a>
+    {% if pode.cadastrar_itens %}<form method="post" action="{% url 'web:documento-conferir' documento.pk %}" x-data="{ enviando: false }" @submit="enviando = true">{% csrf_token %}
+      <button class="btn btn-primary" :disabled="enviando"><span x-show="!enviando">Conferir de novo</span><span x-show="enviando" x-cloak>Conferindo…</span></button></form>{% endif %}
+  </div>
+</div>
+
+{% for m in documento.mensagens %}
+<div class="alert {% if documento.status == 'erro' %}alert-warning{% else %}alert-secondary{% endif %}">{{ m.mensagem }}{% if m.linha %} <span class="font-mono text-xs">(linha {{ m.linha }}{% if m.coluna %}, coluna {{ m.coluna }}{% endif %})</span>{% endif %}</div>
+{% endfor %}
+
+<div class="grid gap-5 lg:grid-cols-3 mb-6">
+  <div class="card card-body lg:col-span-2">
+    <dl class="definicoes">
+      <dt>Emitente</dt><dd>{{ documento.emitente_nome }} <span class="font-mono text-xs text-suave">{{ documento.emitente_cnpj }} · CRT {{ documento.emitente_crt|default:"—" }}</span></dd>
+      <dt>Destinatário</dt><dd>{{ documento.destinatario_nome|default:"—" }} <span class="font-mono text-xs text-suave">{{ documento.destinatario_cnpj }}</span></dd>
+      <dt>Para a empresa</dt><dd>{{ documento.get_papel_display }}</dd>
+      <dt>Emissão</dt><dd>{{ documento.emissao|date:"d/m/Y H:i" }}</dd>
+      <dt>Local do fato gerador</dt><dd>{{ documento.uf }} · IBGE {{ documento.municipio }}</dd>
+      <dt>Leiaute</dt><dd>{% if documento.validado_xsd %}<span class="badge badge-success">validado no motor</span>{% elif documento.validado_xsd is None %}<span class="badge badge-warning">não validado (motor indisponível)</span>{% else %}<span class="badge badge-danger">fora do leiaute</span>{% endif %}</dd>
+      <dt>Conferência</dt><dd>{% if documento.conferido_em %}{{ documento.conferido_em|date:"d/m/Y H:i" }} · tolerância R$ {{ documento.tolerancia|numero }}{% if documento.simulacao %} · <a href="{% url 'web:simulacao' documento.simulacao.pk %}">cálculo e memória do motor</a>{% endif %}{% else %}—{% endif %}</dd>
+    </dl>
+  </div>
+  <div class="grid grid-cols-2 gap-3 content-start">
+    <div class="kpi"><span class="kpi-rotulo">Base CBS/IBS</span><span class="kpi-valor">{{ documento.totais.base_calculo|moeda }}</span></div>
+    <div class="kpi"><span class="kpi-rotulo">Valor da nota</span><span class="kpi-valor">{{ documento.totais.valor_nota|moeda }}</span></div>
+    <div class="kpi"><span class="kpi-rotulo">CBS destacada</span><span class="kpi-valor">{{ documento.totais.cbs|moeda }}</span>
+      {% if documento.simulacao %}<span class="block text-xs text-suave mt-0.5">motor: {{ documento.simulacao.total_cbs|moeda }}</span>{% endif %}</div>
+    <div class="kpi"><span class="kpi-rotulo">IBS destacado</span><span class="kpi-valor">{{ documento.totais.ibs|moeda }}</span>
+      {% if documento.simulacao %}<span class="block text-xs text-suave mt-0.5">motor: {{ documento.simulacao.total_ibs|moeda }}</span>{% endif %}</div>
+  </div>
+</div>
+
+<h2 class="secao-titulo">Itens: nota × motor</h2>
+<div class="card tabela-wrap mb-6">
+<table class="tabela">
+  <thead><tr><th>Item</th><th>Classificação</th><th>Valor</th><th class="num">Na nota</th><th class="num">Motor</th><th class="num">Diferença</th></tr></thead>
+  <tbody>
+  {% for linha in linhas %}{% with item=linha.item %}
+    {% for v in linha.valores %}
+    <tr class="{% if v.divergencia and v.divergencia.status == 'aberta' %}bg-erro-fundo/60{% endif %}">
+      {% if forloop.first %}
+      <td rowspan="{{ linha.valores|length }}" class="align-top min-w-48 border-r border-borda"><div class="font-medium">{{ item.numero }}. {{ item.descricao }}</div>
+        <div class="codigo">{{ item.codigo }}</div>
+        {% if linha.calculo %}<div class="mt-1 text-xs text-erro">{{ linha.calculo.mensagem }}</div>{% endif %}</td>
+      <td rowspan="{{ linha.valores|length }}" class="align-top codigo whitespace-nowrap border-r border-borda">NCM {{ item.ncm|default:"—" }}<br>CST {{ item.cst|default:"—" }} · {{ item.c_class_trib|default:"—" }}</td>
+      {% endif %}
+      <td class="text-sm whitespace-nowrap">{{ v.nome }}</td>
+      <td class="num">{{ v.nota|moeda }}</td>
+      <td class="num">{{ v.motor|moeda }}</td>
+      <td class="num">{% if v.divergencia %}<span class="{% if v.divergencia.status == 'aberta' %}text-erro font-medium{% else %}text-suave{% endif %}">{{ v.divergencia.diferenca|sinal }}</span>{% else %}<span class="text-ok">ok</span>{% endif %}</td>
+    </tr>
+    {% empty %}
+    <tr><td class="align-top"><div class="font-medium">{{ item.numero }}. {{ item.descricao }}</div>{% if linha.calculo %}<div class="mt-1 text-xs text-erro">{{ linha.calculo.mensagem }}</div>{% endif %}</td>
+      <td class="codigo">CST {{ item.cst|default:"—" }} · {{ item.c_class_trib|default:"—" }}</td><td colspan="4" class="text-sm text-suave">Sem valores de CBS/IBS para comparar.</td></tr>
+    {% endfor %}
+  {% endwith %}{% endfor %}
+  </tbody>
+</table>
+</div>
+
+<h2 class="secao-titulo" id="divergencias">Divergências</h2>
+{% if divergencias %}
+<div class="space-y-3">
+  {% for d in divergencias %}
+  <div class="card card-body" x-data="{ editar: false }">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div class="min-w-0">
+        <div class="font-medium">{% if d.numero_item %}Item {{ d.numero_item }} · {% endif %}{{ d.nome_campo }} {% status_divergencia d.status %}</div>
+        {% if d.campo == "calculo" %}<div class="text-sm text-suave">{{ d.mensagem }}</div>
+        {% else %}<div class="text-sm">Nota <span class="font-mono">{{ d.valor_nota|moeda }}</span> · motor <span class="font-mono">{{ d.valor_recalculado|moeda }}</span> · diferença <span class="font-mono {% if d.status == 'aberta' %}text-erro{% endif %}">{{ d.diferenca|sinal }}</span></div>{% endif %}
+        {% if d.comentario %}<p class="mt-1 text-sm text-suave">“{{ d.comentario }}” <span class="text-xs">· {{ d.tratado_por|default:"" }} {{ d.tratado_em|date:"d/m/Y H:i" }}</span></p>{% endif %}
+      </div>
+      {% if pode.resolver_divergencia %}<button type="button" class="btn btn-secondary btn-sm" @click="editar = !editar" x-text="editar ? 'Fechar' : 'Tratar'">Tratar</button>{% endif %}
+    </div>
+    {% if pode.resolver_divergencia %}
+    <form method="post" action="{% url 'web:divergencia' d.pk %}" class="mt-3 grid gap-3 border-t border-borda pt-3 sm:grid-cols-[12rem_1fr_auto] sm:items-end" x-show="editar" x-cloak>{% csrf_token %}
+      <div><label class="form-label" for="status-{{ d.pk }}">Situação</label>
+        <select class="campo" name="status" id="status-{{ d.pk }}">{% for valor, nome in status_divergencia %}<option value="{{ valor }}" {% if d.status == valor %}selected{% endif %}>{{ nome }}</option>{% endfor %}</select></div>
+      <div><label class="form-label" for="comentario-{{ d.pk }}">Comentário (obrigatório para justificar)</label>
+        <input class="campo" name="comentario" id="comentario-{{ d.pk }}" value="{{ d.comentario }}" placeholder="Ex.: redução da LC 214 art. 138 aplicada pelo cliente"></div>
+      <button class="btn btn-primary">Salvar</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card card-body text-sm text-suave">{% if documento.status == "conforme" %}Nenhuma divergência: todos os valores destacados batem com o motor dentro da tolerância.{% else %}Nenhuma divergência registrada.{% endif %}</div>
+{% endif %}
+{% endblock %}

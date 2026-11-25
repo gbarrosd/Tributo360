@@ -2,6 +2,7 @@ import hashlib
 import secrets
 import uuid
 from datetime import timedelta
+from decimal import Decimal
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
@@ -85,6 +86,13 @@ class Escritorio(models.Model):
         help_text="Sem máscara. CNPJ pode ser alfanumérico.",
     )
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.TRIAL)
+    tolerancia_divergencia = models.DecimalField(
+        "tolerância de divergência (R$)",
+        max_digits=8,
+        decimal_places=2,
+        default=Decimal("0.01"),
+        help_text="Diferença máxima, por valor, entre o destacado na nota e o recalculado pelo motor.",
+    )
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 
