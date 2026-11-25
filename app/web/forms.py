@@ -445,3 +445,31 @@ def verificar_xml_de_nfse(conteudo):
                 "O DANFSe precisa da NFS-e autorizada (elemento NFSe)."
             )
         raise forms.ValidationError("Este XML não é uma NFS-e nacional autorizada (elemento NFSe).")
+
+
+class RelatorioConferenciaForm(forms.Form):
+    """Filtros do relatório de conferência: empresa (ou todas), período de emissão e divergências incluídas."""
+
+    DIVERGENCIAS = [("abertas", "Só as abertas"), ("todas", "Todas (abertas, justificadas e resolvidas)")]
+    MAX_DIAS = 400
+
+    empresa = forms.ModelChoiceField(
+        label="Empresa", queryset=Empresa.objects.none(), required=False, empty_label="Todas as empresas"
+    )
+    de = forms.DateField(label="Emitidas de", widget=forms.DateInput(attrs={"type": "date"}))
+    ate = forms.DateField(label="até", widget=forms.DateInput(attrs={"type": "date"}))
+    divergencias = forms.ChoiceField(label="Divergências", choices=DIVERGENCIAS, initial="abertas", required=False)
+
+    def __init__(self, *args, empresas, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["empresa"].queryset = empresas
+
+    def clean(self):
+        dados = super().clean()
+        de, ate = dados.get("de"), dados.get("ate")
+        if de and ate:
+            if de > ate:
+                self.add_error("ate", "A data final é anterior à inicial.")
+            elif (ate - de).days > self.MAX_DIAS:
+                self.add_error("ate", f"Escolha um período de até {self.MAX_DIAS} dias.")
+        return dados
