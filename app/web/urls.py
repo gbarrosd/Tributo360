@@ -38,6 +38,7 @@ urlpatterns = [
     path("simulacoes/<uuid:pk>/", simulacoes.detalhe, name="simulacao"),
     # Documentos fiscais (Fase 4)
     path("documentos/", documentos.todos, name="documentos"),
+    path("documentos/importar/", documentos.importar_escolhendo, name="documentos-importar-geral"),
     path("documentos/tolerancia/", documentos.tolerancia, name="tolerancia"),
     path("empresas/<uuid:pk>/documentos/", documentos.da_empresa, name="documentos-empresa"),
     path("empresas/<uuid:pk>/documentos/importar/", documentos.importar, name="documentos-importar"),

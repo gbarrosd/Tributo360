@@ -73,20 +73,22 @@
 <h2 class="secao-titulo" id="divergencias">Divergências</h2>
 {% if divergencias %}
 <div class="space-y-3">
-  {% for d in divergencias %}
+  {% for grupo in grupos %}{% with d=grupo.primeira %}
   <div class="card card-body" x-data="{ editar: false }">
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div class="min-w-0">
-        <div class="font-medium">{% if d.numero_item %}Item {{ d.numero_item }} · {% endif %}{{ d.nome_campo }} {% status_divergencia d.status %}</div>
+        <div class="font-medium">{% if grupo.itens|length > 1 %}Itens {{ grupo.itens|join:", " }} · {% elif d.numero_item %}Item {{ d.numero_item }} · {% endif %}{{ d.nome_campo }} {% status_divergencia d.status %}
+          {% if grupo.outras %}<span class="badge badge-secondary">{{ grupo.itens|length }} itens</span>{% endif %}</div>
         {% if d.campo == "calculo" %}<div class="text-sm text-suave">{{ d.mensagem }}</div>
-        {% else %}<div class="text-sm">Nota <span class="font-mono">{{ d.valor_nota|moeda }}</span> · motor <span class="font-mono">{{ d.valor_recalculado|moeda }}</span> · diferença <span class="font-mono {% if d.status == 'aberta' %}text-erro{% endif %}">{{ d.diferenca|sinal }}</span></div>{% endif %}
+        {% else %}<div class="text-sm">Nota <span class="font-mono">{{ d.valor_nota|moeda }}</span> · motor <span class="font-mono">{{ d.valor_recalculado|moeda }}</span> · diferença <span class="font-mono {% if d.status == 'aberta' %}text-erro{% endif %}">{{ d.diferenca|sinal }}</span>{% if d.mensagem %} <span class="text-suave">· {{ d.mensagem }}</span>{% endif %}</div>{% endif %}
         {% if d.comentario %}<p class="mt-1 text-sm text-suave">“{{ d.comentario }}” <span class="text-xs">· {{ d.tratado_por|default:"" }} {{ d.tratado_em|date:"d/m/Y H:i" }}</span></p>{% endif %}
       </div>
       {% if pode.resolver_divergencia %}<button type="button" class="btn btn-secondary btn-sm" @click="editar = !editar" x-text="editar ? 'Fechar' : 'Tratar'">Tratar</button>{% endif %}
     </div>
     {% if pode.resolver_divergencia %}
     <form method="post" action="{% url 'web:divergencia' d.pk %}" class="mt-3 grid gap-3 border-t border-borda pt-3 sm:grid-cols-[12rem_1fr_auto] sm:items-end" x-show="editar" x-cloak>{% csrf_token %}
-      <div><label class="form-label" for="status-{{ d.pk }}">Situação</label>
+      {% for outra in grupo.outras %}<input type="hidden" name="mesmas" value="{{ outra.pk }}">{% endfor %}
+      <div><label class="form-label" for="status-{{ d.pk }}">Situação{% if grupo.outras %} ({{ grupo.itens|length }} itens){% endif %}</label>
         <select class="campo" name="status" id="status-{{ d.pk }}">{% for valor, nome in status_divergencia %}<option value="{{ valor }}" {% if d.status == valor %}selected{% endif %}>{{ nome }}</option>{% endfor %}</select></div>
       <div><label class="form-label" for="comentario-{{ d.pk }}">Comentário (obrigatório para justificar)</label>
         <input class="campo" name="comentario" id="comentario-{{ d.pk }}" value="{{ d.comentario }}" placeholder="Ex.: redução da LC 214 art. 138 aplicada pelo cliente"></div>
@@ -94,7 +96,7 @@
     </form>
     {% endif %}
   </div>
-  {% endfor %}
+  {% endwith %}{% endfor %}
 </div>
 {% else %}
 <div class="card card-body text-sm text-suave">{% if documento.status == "conforme" %}Nenhuma divergência: todos os valores destacados batem com o motor dentro da tolerância.{% else %}Nenhuma divergência registrada.{% endif %}</div>

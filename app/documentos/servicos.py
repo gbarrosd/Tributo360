@@ -273,7 +273,11 @@ def _dados_da_operacao(documento, itens):
         dados_item = {
             "cst": item.cst,
             "c_class_trib": item.c_class_trib,
-            "base_calculo": item.base_calculo,
+            # Sem o grupo gIBSCBS (ex.: CST 410, imunidade e não incidência) a nota não traz base, mas o motor
+            # exige uma (REG-025). Vai o valor do item: o motor devolve só CST/cClassTrib, sem valores.
+            "base_calculo": item.base_calculo
+            if item.base_calculo is not None
+            else (item.valor_produto or Decimal("0")),
             "ncm": item.ncm,
             "nbs": item.nbs,
             "quantidade": item.quantidade,
@@ -315,10 +319,9 @@ def aliquotas_nome(campo):
 
 
 def _diferenca(nota, recalculado, tolerancia):
-    if nota is None:
-        return None
+    """Diferença nota − motor acima da tolerância, ou None. Valor ausente na nota conta como zero."""
     recalculado = Decimal(str(recalculado)) if recalculado not in (None, "") else Decimal("0")
-    diferenca = nota - recalculado
+    diferenca = (nota if nota is not None else Decimal("0")) - recalculado
     return diferenca if abs(diferenca) > tolerancia else None
 
 
@@ -403,15 +406,19 @@ def conferir(request, documento, nota=None):
             continue
         for campo in CAMPOS_COMPARADOS:
             valor_nota = getattr(item, campo)
+            if valor_nota is None and campo == "base_calculo":
+                continue  # a base enviada ao motor foi o valor do item: não há o que comparar
             diferenca = _diferenca(valor_nota, calculado.valores.get(campo), tolerancia)
             if diferenca is not None:
+                destacado = valor_nota if valor_nota is not None else Decimal("0")
                 divergencias.append(
                     Divergencia(
                         numero_item=item.numero,
                         campo=campo,
-                        valor_nota=valor_nota,
-                        valor_recalculado=valor_nota - diferenca,
+                        valor_nota=destacado,
+                        valor_recalculado=destacado - diferenca,
                         diferenca=diferenca,
+                        mensagem="" if valor_nota is not None else "A nota não destaca este valor.",
                     )
                 )
     status = DocumentoFiscal.Status.DIVERGENTE if divergencias else DocumentoFiscal.Status.CONFORME

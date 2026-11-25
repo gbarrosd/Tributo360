@@ -11,6 +11,7 @@ SECOES = {
     "documentos": "documentos",
     "documentos-empresa": "documentos",
     "documentos-importar": "documentos",
+    "documentos-importar-geral": "documentos",
     "lote": "documentos",
     "documento": "documentos",
     "documento-danfse": "documentos",
