@@ -126,6 +126,17 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+# Fora do modo de desenvolvimento os arquivos estáticos ganham o hash do conteúdo no nome
+# (app.3f2a1c.css). O nginx guarda /static/ em cache por 7 dias; sem o hash, quem já tinha aberto o
+# sistema continuava com o CSS antigo depois de um deploy.
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
+        if DEBUG
+        else "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
+    },
+}
 
 LOGIN_URL = "web:login"
 LOGIN_REDIRECT_URL = "web:inicio"
