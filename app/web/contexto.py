@@ -13,6 +13,8 @@ SECOES = {
     "documentos-importar": "documentos",
     "lote": "documentos",
     "documento": "documentos",
+    "documento-danfse": "documentos",
+    "danfse": "danfse",
 }
 
 

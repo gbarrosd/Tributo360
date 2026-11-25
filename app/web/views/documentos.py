@@ -1,4 +1,4 @@
-"""Documentos fiscais: importação de XML (NF-e 55), conferência pelo motor e tratamento das divergências."""
+"""Documentos fiscais: importação de XML (NF-e 55 e NFS-e nacional), conferência pelo motor, divergências e DANFSe."""
 
 from django.contrib import messages
 from django.db.models import Count, Q
@@ -10,9 +10,11 @@ from contas.papeis import Acao
 from documentos import servicos
 from documentos.models import Divergencia, DocumentoFiscal, LoteImportacao
 from empresas.models import Empresa
+from engines import clientes
+from engines.http import ErroDeMotor
 
 from ..acesso import tela
-from ..forms import DivergenciaForm, ImportarXmlForm, ToleranciaForm
+from ..forms import DanfseAvulsoForm, DanfseForm, DivergenciaForm, ImportarXmlForm, ToleranciaForm
 from .empresas import empresa_da_requisicao
 
 POR_PAGINA = 100
@@ -185,8 +187,49 @@ def reconferir(request, pk):
 def documento_xml(request, pk):
     documento = documento_da_requisicao(request, pk)
     resposta = HttpResponse(documento.xml, content_type="application/xml; charset=utf-8")
-    resposta["Content-Disposition"] = f'attachment; filename="NFe{documento.chave}.xml"'
+    prefixo = "NFSe" if documento.modelo == DocumentoFiscal.Modelo.NFSE else "NFe"
+    resposta["Content-Disposition"] = f'attachment; filename="{prefixo}{documento.chave}.xml"'
     return resposta
+
+
+def _pdf_do_danfse(request, xml, form, nome):
+    """PDF do gerador, ou None com a mensagem do motor em `messages`."""
+    try:
+        pdf = clientes.danfse().gerar(xml, stc=int(form.cleaned_data["situacao"]), canhoto=form.cleaned_data["canhoto"])
+    except ErroDeMotor as erro:
+        messages.error(request, str(erro))
+        return None
+    resposta = HttpResponse(pdf, content_type="application/pdf")
+    resposta["Content-Disposition"] = f'inline; filename="{nome}"'
+    return resposta
+
+
+@tela(Acao.SIMULAR)
+def documento_danfse(request, pk):
+    """DANFSe (PDF) de uma NFS-e importada. Situação e canhoto vêm da query string."""
+    documento = documento_da_requisicao(request, pk)
+    if documento.modelo != DocumentoFiscal.Modelo.NFSE:
+        messages.error(request, "O DANFSe só existe para NFS-e.")
+        return redirect("web:documento", pk=documento.pk)
+    form = DanfseForm(request.GET or {"situacao": "0"})
+    if form.is_valid():
+        resposta = _pdf_do_danfse(request, documento.xml.encode(), form, f"DANFSe-{documento.numero}.pdf")
+        if resposta is not None:
+            return resposta
+    else:
+        messages.error(request, "Situação do DANFSe inválida.")
+    return redirect("web:documento", pk=documento.pk)
+
+
+@tela(Acao.SIMULAR)
+def danfse_avulso(request):
+    """Gera o DANFSe de um XML de NFS-e enviado na hora, sem importar a nota."""
+    form = DanfseAvulsoForm(request.POST or None, request.FILES or None)
+    if request.method == "POST" and form.is_valid():
+        resposta = _pdf_do_danfse(request, form.cleaned_data["arquivo"], form, "DANFSe.pdf")
+        if resposta is not None:
+            return resposta
+    return render(request, "web/documentos/danfse.html", {"form": form})
 
 
 @require_POST

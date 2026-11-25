@@ -18,7 +18,7 @@ from engines import aliquotas, clientes
 from engines.http import ErroDeMotor
 from simulacoes.servicos import simular_regime_regular
 
-from . import nfe
+from . import nfe, nfse
 from .models import Divergencia, DocumentoFiscal, LoteImportacao
 
 MAX_BYTES_XML = 5 * 1024 * 1024
@@ -85,10 +85,24 @@ def _papel(empresa, nota):
     return None
 
 
-def _validar_no_motor(conteudo):
+LEITORES = {DocumentoFiscal.Modelo.NFE: nfe, DocumentoFiscal.Modelo.NFSE: nfse}
+
+
+def nome_do_modelo(modelo):
+    return LEITORES[modelo].NOME
+
+
+def _ler(conteudo):
+    """(leitor, notas) do arquivo: NF-e 55 ou NFS-e nacional, conforme o namespace da raiz."""
+    raiz = nfe.analisar(conteudo)
+    leitor = nfse if nfse.eh_nfse(raiz) else nfe
+    return leitor, leitor.notas(raiz)
+
+
+def _validar_no_motor(conteudo, tipo):
     """(validado, mensagem) — validado é None quando o motor não respondeu."""
     try:
-        resultado = clientes.regime_regular().validar_xml(conteudo, tipo="nfe", subtipo="nota")
+        resultado = clientes.regime_regular().validar_xml(conteudo, tipo=tipo, subtipo="nota")
     except ErroDeMotor as erro:
         return None, {"etapa": "xsd", "mensagem": f"Validação do XML não feita: {erro}"}
     if resultado.valido:
@@ -136,16 +150,16 @@ def _importar_arquivo(request, empresa, lote, nome, conteudo):
     if conteudo is None or len(conteudo) > MAX_BYTES_XML:
         return [_recusado(nome, f"Arquivo maior que {MAX_BYTES_XML // (1024 * 1024)} MB.")]
     try:
-        notas = nfe.ler(conteudo)
+        leitor, notas = _ler(conteudo)
     except nfe.XmlInvalido as erro:
         return [_recusado(nome, erro.mensagem, erro.linha, erro.coluna)]
 
     resultados, pendentes = [], []
     for nota in notas:
+        rotulo = f"{leitor.NOME} {nota.numero}/{nota.serie}"
         existente = (
             DocumentoFiscal.objects.do_escritorio(request.membership.escritorio)
-            .filter(modelo=DocumentoFiscal.Modelo.NFE)
-            .filter(chave=nota.chave)
+            .filter(modelo=nota.modelo, chave=nota.chave)
             .first()
             or DocumentoFiscal.objects.do_escritorio(request.membership.escritorio).filter(hash_xml=nota.hash).first()
         )
@@ -154,7 +168,7 @@ def _importar_arquivo(request, empresa, lote, nome, conteudo):
                 {
                     "arquivo": nome,
                     "resultado": "duplicado",
-                    "mensagem": f"NF-e {nota.numero}/{nota.serie} já importada em {existente.criado_em:%d/%m/%Y}.",
+                    "mensagem": f"{rotulo} já importada em {existente.criado_em:%d/%m/%Y}.",
                     "documento_id": str(existente.pk) if existente.empresa_id == empresa.pk else None,
                 }
             )
@@ -164,7 +178,7 @@ def _importar_arquivo(request, empresa, lote, nome, conteudo):
             resultados.append(
                 _recusado(
                     nome,
-                    f"NF-e {nota.numero}/{nota.serie}: nem o emitente ({nota.emitente_cnpj}) nem o destinatário "
+                    f"{rotulo}: nem o emitente ({nota.emitente_cnpj}) nem o destinatário "
                     f"({nota.destinatario_cnpj or '—'}) é o CNPJ desta empresa ({empresa.cnpj}).",
                 )
             )
@@ -173,7 +187,7 @@ def _importar_arquivo(request, empresa, lote, nome, conteudo):
     if not pendentes:
         return resultados
 
-    validado, mensagem_xsd = _validar_no_motor(conteudo)
+    validado, mensagem_xsd = _validar_no_motor(conteudo, leitor.TIPO_XSD)
     if validado is False:
         resultados.extend(
             _recusado(
@@ -191,7 +205,7 @@ def _importar_arquivo(request, empresa, lote, nome, conteudo):
                     escritorio=request.membership.escritorio,
                     empresa=empresa,
                     lote=lote,
-                    modelo=DocumentoFiscal.Modelo.NFE,
+                    modelo=nota.modelo,
                     papel=papel,
                     chave=nota.chave,
                     numero=nota.numero,
@@ -215,7 +229,7 @@ def _importar_arquivo(request, empresa, lote, nome, conteudo):
                 )
         except IntegrityError:  # mesma nota enviada duas vezes no mesmo lote
             resultados.append(
-                {"arquivo": nome, "resultado": "duplicado", "mensagem": f"NF-e {nota.numero} repetida no envio."}
+                {"arquivo": nome, "resultado": "duplicado", "mensagem": f"{leitor.NOME} {nota.numero} repetida."}
             )
             continue
         conferir(request, documento, nota=nota)
@@ -223,7 +237,7 @@ def _importar_arquivo(request, empresa, lote, nome, conteudo):
             {
                 "arquivo": nome,
                 "resultado": "novo",
-                "mensagem": f"NF-e {nota.numero}/{nota.serie}: {documento.get_status_display().lower()}.",
+                "mensagem": f"{leitor.NOME} {nota.numero}/{nota.serie}: {documento.get_status_display().lower()}.",
                 "documento_id": str(documento.pk),
                 "status": documento.status,
             }
@@ -261,6 +275,7 @@ def _dados_da_operacao(documento, itens):
             "c_class_trib": item.c_class_trib,
             "base_calculo": item.base_calculo,
             "ncm": item.ncm,
+            "nbs": item.nbs,
             "quantidade": item.quantidade,
             "unidade": item.unidade,
         }
@@ -285,7 +300,7 @@ def _dados_da_operacao(documento, itens):
         "data_fato_gerador": documento.emissao,
         "uf": documento.uf,
         "municipio": documento.municipio,
-        "rotulo": f"Conferência NF-e {documento.numero}/{documento.serie}",
+        "rotulo": f"Conferência {nome_do_modelo(documento.modelo)} {documento.numero}/{documento.serie}",
         "itens": entrada_itens,
     }
     aviso = ""
@@ -335,8 +350,12 @@ def conferir(request, documento, nota=None):
         mensagens.append(
             {
                 "etapa": "recalculo",
-                "mensagem": "Emitente do Simples Nacional (CRT "
-                f"{documento.emitente_crt or '?'}): a conferência pelo motor do Simples entra numa próxima etapa.",
+                "mensagem": (
+                    "Prestador optante do Simples Nacional ou MEI (opSimpNac)"
+                    if documento.modelo == DocumentoFiscal.Modelo.NFSE
+                    else f"Emitente do Simples Nacional (CRT {documento.emitente_crt or '?'})"
+                )
+                + ": a conferência pelo motor do Simples entra numa próxima etapa.",
             }
         )
         return concluir(DocumentoFiscal.Status.NAO_CONFERIDO)

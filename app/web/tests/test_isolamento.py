@@ -38,6 +38,7 @@ MATRIZ = {
     "documento": ("documento", ["get"]),
     "documento-conferir": ("documento", ["post"]),
     "documento-xml": ("documento", ["get"]),
+    "documento-danfse": ("documento", ["get"]),
     "divergencia": ("divergencia", ["post"]),
 }
 
