@@ -407,4 +407,29 @@ class DanfseAvulsoForm(DanfseForm):
         arquivo = self.cleaned_data["arquivo"]
         if arquivo.size > MAX_BYTES_XML:
             raise forms.ValidationError("Arquivo maior que 5 MB.")
-        return arquivo.read()
+        conteudo = arquivo.read()
+        verificar_xml_de_nfse(conteudo)
+        return conteudo
+
+
+def verificar_xml_de_nfse(conteudo):
+    """Confere, antes de chamar o gerador, que o XML é uma NFS-e nacional. Outros documentos têm mensagem própria."""
+    from documentos import nfe, nfse
+
+    try:
+        raiz = nfe.analisar(conteudo)
+    except nfe.XmlInvalido as erro:
+        posicao = f" (linha {erro.linha}, coluna {erro.coluna})" if erro.linha else ""
+        raise forms.ValidationError(f"{erro.mensagem}{posicao}") from None
+    if raiz.tag.startswith(nfe.NS):
+        raise forms.ValidationError(
+            "Este XML é uma NF-e (modelo 55). O DANFSe só vale para NFS-e nacional; "
+            "para conferir uma NF-e, use Importar XML na tela da empresa."
+        )
+    if not nfse.eh_nfse(raiz) or (raiz.tag != f"{nfse.NS}NFSe" and raiz.find(f".//{nfse.NS}NFSe") is None):
+        if raiz.tag == f"{nfse.NS}DPS":
+            raise forms.ValidationError(
+                "Este XML é uma DPS (declaração de prestação de serviço), ainda não autorizada. "
+                "O DANFSe precisa da NFS-e autorizada (elemento NFSe)."
+            )
+        raise forms.ValidationError("Este XML não é uma NFS-e nacional autorizada (elemento NFSe).")
