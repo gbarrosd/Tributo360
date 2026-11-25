@@ -176,9 +176,26 @@ def test_danfse_avulso(cenario, danfse):
     assert not DocumentoFiscal.objects.exists()  # só gera o PDF, não importa
 
 
+@pytest.mark.parametrize(
+    "conteudo, trecho",
+    [
+        (None, "Este XML é uma NF-e (modelo 55)"),
+        (b"<x>", "XML malformado"),
+        (b"<x/>", "não é uma NFS-e nacional"),
+        (b'<DPS xmlns="http://www.sped.fazenda.gov.br/nfse"/>', "é uma DPS"),
+    ],
+)
+def test_danfse_avulso_recusa_o_que_nao_e_nfse_sem_chamar_o_gerador(cenario, danfse, conteudo, trecho):
+    if conteudo is None:
+        conteudo = nfe_xml_de_teste(30, [{"base": D("100.00"), **_valores(D("100.00"))}])
+    resposta = cenario["cliente"].post(reverse("web:danfse"), {"arquivo": com_nome(conteudo, "n.xml"), "situacao": "0"})
+    assert resposta.status_code == 200 and trecho in resposta.content.decode()
+    assert danfse.ultima("df") is None
+
+
 def test_danfse_avulso_recusado_mostra_a_mensagem(cenario, danfse):
     danfse.rotas[("df", "POST", "/api/danfse")] = httpx.Response(400, json={"mensagem": "EOF"})
     resposta = cenario["cliente"].post(
-        reverse("web:danfse"), {"arquivo": com_nome(b"<x/>", "n.xml"), "situacao": "0"}, follow=True
+        reverse("web:danfse"), {"arquivo": com_nome(nfse_xml(23), "n.xml"), "situacao": "0"}, follow=True
     )
     assert resposta.status_code == 200 and "EOF" in resposta.content.decode()
