@@ -14,7 +14,14 @@ from engines import clientes
 from engines.http import ErroDeMotor
 
 from ..acesso import tela
-from ..forms import DanfseAvulsoForm, DanfseForm, DivergenciaForm, ImportarXmlForm, ToleranciaForm
+from ..forms import (
+    DanfseAvulsoForm,
+    DanfseForm,
+    DivergenciaForm,
+    ImportarXmlComEmpresaForm,
+    ImportarXmlForm,
+    ToleranciaForm,
+)
 from .empresas import empresa_da_requisicao
 
 POR_PAGINA = 100
@@ -108,17 +115,40 @@ def importar(request, pk):
     empresa = empresa_da_requisicao(request, pk)
     form = ImportarXmlForm(request.POST or None, request.FILES or None)
     if request.method == "POST" and form.is_valid():
-        enviados = []
-        for arquivo in form.cleaned_data["arquivos"]:
-            limite = servicos.MAX_BYTES_ZIP if arquivo.name.lower().endswith(".zip") else servicos.MAX_BYTES_XML
-            enviados.append((arquivo.name, arquivo.read(limite + 1)))
-        try:
-            lote = servicos.importar(request, empresa, enviados)
-        except servicos.LoteRecusado as erro:
-            form.add_error("arquivos", str(erro))
-        else:
-            return redirect("web:lote", lote.pk)
+        resposta = _importar_envio(request, empresa, form)
+        if resposta is not None:
+            return resposta
     return render(request, "web/documentos/importar.html", {"empresa": empresa, "form": form})
+
+
+@tela(Acao.CADASTRAR_ITENS)
+def importar_escolhendo(request):
+    """Importação pelo menu Documentos: a empresa vem do formulário."""
+    empresas = Empresa.tenant(request).filter(ativa=True).order_by("razao_social")
+    inicial = {}
+    if empresas.count() == 1:
+        inicial["empresa"] = empresas.first()
+    elif _uuid(request.GET.get("empresa", "")):
+        inicial["empresa"] = empresas.filter(pk=request.GET["empresa"]).first()
+    form = ImportarXmlComEmpresaForm(request.POST or None, request.FILES or None, empresas=empresas, initial=inicial)
+    if request.method == "POST" and form.is_valid():
+        resposta = _importar_envio(request, form.cleaned_data["empresa"], form)
+        if resposta is not None:
+            return resposta
+    return render(request, "web/documentos/importar.html", {"empresa": None, "form": form})
+
+
+def _importar_envio(request, empresa, form):
+    enviados = []
+    for arquivo in form.cleaned_data["arquivos"]:
+        limite = servicos.MAX_BYTES_ZIP if arquivo.name.lower().endswith(".zip") else servicos.MAX_BYTES_XML
+        enviados.append((arquivo.name, arquivo.read(limite + 1)))
+    try:
+        lote = servicos.importar(request, empresa, enviados)
+    except servicos.LoteRecusado as erro:
+        form.add_error("arquivos", str(erro))
+        return None
+    return redirect("web:lote", lote.pk)
 
 
 @tela()

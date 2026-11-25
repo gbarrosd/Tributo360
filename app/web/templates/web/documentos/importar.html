@@ -1,13 +1,14 @@
 {% extends "web/base.html" %}
-{% block titulo %}Importar XML · {{ empresa.razao_social }}{% endblock %}
+{% block titulo %}Importar XML{% if empresa %} · {{ empresa.razao_social }}{% endif %}{% endblock %}
 {% block conteudo %}
-<nav class="migalhas"><a href="{% url 'web:empresa' empresa.pk %}">{{ empresa.razao_social }}</a> › <a href="{% url 'web:documentos-empresa' empresa.pk %}">Documentos</a></nav>
+<nav class="migalhas">{% if empresa %}<a href="{% url 'web:empresa' empresa.pk %}">{{ empresa.razao_social }}</a> › <a href="{% url 'web:documentos-empresa' empresa.pk %}">Documentos</a>{% else %}<a href="{% url 'web:documentos' %}">Documentos</a>{% endif %}</nav>
 <div class="cabecalho-pagina"><div><h1 class="titulo-pagina">Importar XML de NF-e ou NFS-e</h1>
   <p class="subtitulo">Cada nota é validada no leiaute, recalculada pelo motor oficial e comparada item a item com o que está destacado.</p></div></div>
 <div class="grid gap-5 lg:grid-cols-2">
   <form method="post" enctype="multipart/form-data" class="card card-body space-y-4" novalidate
         x-data="{ enviando: false, arquivos: [] }" @submit="enviando = true">{% csrf_token %}
     {% include "web/_erros_form.html" %}
+    {% if form.empresa %}{% include "web/_campo.html" with campo=form.empresa %}{% endif %}
     <label for="{{ form.arquivos.id_for_label }}" class="block cursor-pointer rounded-lg border-2 border-dashed border-borda bg-superficie-2 px-4 py-8 text-center hover:border-marca"
            @dragover.prevent @drop.prevent="$refs.campo.files = $event.dataTransfer.files; arquivos = [...$event.dataTransfer.files].map(f => f.name)">
       <span class="mx-auto grid size-10 place-items-center rounded-full bg-marca-suave text-marca">{% include "web/_icone.html" with nome="upload" classe="size-5" %}</span>
@@ -24,7 +25,7 @@
   <div class="card card-body text-sm space-y-3">
     <div class="font-semibold">Como funciona a conferência</div>
     <ol class="list-decimal pl-5 space-y-1.5 text-suave">
-      <li>A nota precisa ter esta empresa como <strong class="text-texto">emitente ou destinatária</strong> (CNPJ {{ empresa.cnpj }}).</li>
+      <li>A nota precisa ter esta empresa como <strong class="text-texto">emitente ou destinatária</strong> {% if empresa %}(CNPJ {{ empresa.cnpj }}){% endif %}.</li>
       <li>Nota já importada não entra de novo: a chave de acesso e o conteúdo são conferidos.</li>
       <li>O XML passa pelo validador do motor da Receita; fora do leiaute, a tela mostra linha e coluna.</li>
       <li>O motor recalcula CBS, IBS e Imposto Seletivo com a mesma classificação da nota (CST e cClassTrib). A partir de 2027 as alíquotas vêm da tabela do Tributo360.</li>

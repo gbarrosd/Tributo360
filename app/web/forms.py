@@ -364,6 +364,18 @@ class ImportarXmlForm(forms.Form):
     )
 
 
+class ImportarXmlComEmpresaForm(ImportarXmlForm):
+    """Importação a partir do menu Documentos: a empresa é escolhida no formulário."""
+
+    empresa = forms.ModelChoiceField(label="Empresa", queryset=Empresa.objects.none(), empty_label="Escolha a empresa")
+
+    field_order = ["empresa", "arquivos"]
+
+    def __init__(self, *args, empresas, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["empresa"].queryset = empresas
+
+
 class DivergenciaForm(forms.Form):
     status = forms.ChoiceField(label="Situação", choices=[])
     comentario = forms.CharField(label="Comentário", required=False, widget=forms.Textarea(attrs={"rows": 2}))

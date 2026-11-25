@@ -432,3 +432,24 @@ def test_telas_de_documentos_abrem(cenario, motor):
     assert "Com divergência" in pagina and "VAL-120" in pagina and "+3,00" in pagina
     xml = cliente.get(reverse("web:documento-xml", args=[documento.pk]))
     assert xml["Content-Type"].startswith("application/xml") and b"<nfeProc" in xml.content
+
+
+# --- Importação pelo menu Documentos -------------------------------------------------------------------
+
+
+def test_importar_pelo_menu_documentos_escolhendo_a_empresa(cenario, motor, criar_escritorio, criar_empresa):
+    pagina = cenario["cliente"].get(reverse("web:documentos")).content.decode()
+    assert reverse("web:documentos-importar-geral") in pagina
+    url = reverse("web:documentos-importar-geral")
+    assert cenario["cliente"].get(url).status_code == 200
+
+    outro_escritorio, _, _ = criar_escritorio("Outro")
+    de_outro = criar_empresa(outro_escritorio, cnpj=CNPJ_EMPRESA)
+    xml = com_nome(nfe_xml(40, [item_certo("100.00")]), "n.xml")
+    resposta = cenario["cliente"].post(url, {"empresa": str(de_outro.pk), "arquivos": [xml]})
+    assert resposta.status_code == 200 and not DocumentoFiscal.objects.exists()  # empresa de outro escritório
+
+    xml = com_nome(nfe_xml(40, [item_certo("100.00")]), "n.xml")
+    resposta = cenario["cliente"].post(url, {"empresa": str(cenario["empresa"].pk), "arquivos": [xml]})
+    assert resposta.status_code == 302
+    assert DocumentoFiscal.objects.get().empresa == cenario["empresa"]
