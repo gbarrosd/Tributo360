@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.db.models import Count, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from contas.papeis import Acao
@@ -20,9 +21,12 @@ from ..forms import (
     DivergenciaForm,
     ImportarXmlComEmpresaForm,
     ImportarXmlForm,
+    RelatorioConferenciaForm,
     ToleranciaForm,
 )
+from ..relatorios import conferencia as rel_conferencia
 from .empresas import empresa_da_requisicao
+from .simulacoes import arquivo as resposta_arquivo
 
 POR_PAGINA = 100
 
@@ -311,3 +315,53 @@ def tolerancia(request):
     else:
         messages.error(request, "Informe a tolerância em reais, entre 0 e 1.000 (ex.: 0,01).")
     return redirect("web:documentos")
+
+
+# --- Relatório de conferência (Fase 5) -------------------------------------------------------------
+
+
+def _form_relatorio(request, dados):
+    empresas = Empresa.tenant(request).order_by("razao_social")
+    hoje = timezone.localdate()
+    inicial = {"de": hoje.replace(day=1), "ate": hoje, "divergencias": "abertas"}
+    if _uuid(request.GET.get("empresa", "")):
+        inicial["empresa"] = empresas.filter(pk=request.GET["empresa"]).first()
+    return RelatorioConferenciaForm(dados, empresas=empresas, initial=inicial)
+
+
+@tela()
+def relatorio_conferencia(request):
+    """Escolha de empresa e período; os botões baixam o PDF ou a planilha."""
+    form = _form_relatorio(request, None)
+    return render(request, "web/documentos/relatorio.html", {"form": form})
+
+
+def _baixar_relatorio(request, extensao):
+    form = _form_relatorio(request, request.GET)
+    if not form.is_valid():
+        return render(request, "web/documentos/relatorio.html", {"form": form}, status=400)
+    filtros = form.cleaned_data
+    documentos = DocumentoFiscal.tenant(request).filter(
+        emissao__date__gte=filtros["de"], emissao__date__lte=filtros["ate"]
+    )
+    divergencias = Divergencia.tenant(request).filter(
+        documento__emissao__date__gte=filtros["de"], documento__emissao__date__lte=filtros["ate"]
+    )
+    if filtros.get("empresa"):
+        documentos = documentos.filter(empresa=filtros["empresa"])
+        divergencias = divergencias.filter(documento__empresa=filtros["empresa"])
+    dados = rel_conferencia.montar(
+        documentos, divergencias, filtros, request.membership.escritorio.tolerancia_divergencia
+    )
+    gerar = rel_conferencia.gerar_pdf if extensao == "pdf" else rel_conferencia.gerar_xlsx
+    return resposta_arquivo(gerar(request, dados), rel_conferencia.nome_arquivo(filtros, extensao), extensao)
+
+
+@tela()
+def relatorio_conferencia_pdf(request):
+    return _baixar_relatorio(request, "pdf")
+
+
+@tela()
+def relatorio_conferencia_xlsx(request):
+    return _baixar_relatorio(request, "xlsx")

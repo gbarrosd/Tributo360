@@ -4,7 +4,10 @@
 <div class="cabecalho-pagina">
   <div><h1 class="titulo-pagina">Documentos fiscais</h1>
     <p class="subtitulo">NF-e e NFS-e importadas e conferidas pelo motor oficial.</p></div>
-  {% if pode.cadastrar_itens %}<div class="acoes"><a class="btn btn-primary" href="{% url 'web:documentos-importar-geral' %}{% if empresa_id %}?empresa={{ empresa_id }}{% endif %}">{% include "web/_icone.html" with nome="upload" %}Importar XML</a></div>{% endif %}
+  <div class="acoes">
+    <a class="btn btn-outline" href="{% url 'web:relatorio-conferencia' %}{% if empresa_id %}?empresa={{ empresa_id }}{% endif %}">Relatório</a>
+    {% if pode.cadastrar_itens %}<a class="btn btn-primary" href="{% url 'web:documentos-importar-geral' %}{% if empresa_id %}?empresa={{ empresa_id }}{% endif %}">{% include "web/_icone.html" with nome="upload" %}Importar XML</a>{% endif %}
+  </div>
 </div>
 <div class="grid grid-cols-2 gap-3 lg:grid-cols-4 mb-6">
   <div class="kpi"><span class="kpi-rotulo">Notas conferidas</span><span class="kpi-valor">{{ conferidas }}</span></div>

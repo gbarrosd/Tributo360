@@ -1,0 +1,31 @@
+{% extends "web/base.html" %}
+{% block titulo %}Relatório de conferência{% endblock %}
+{% block conteudo %}
+<nav class="migalhas"><a href="{% url 'web:documentos' %}">Documentos</a></nav>
+<div class="cabecalho-pagina"><div><h1 class="titulo-pagina">Relatório de conferência</h1>
+  <p class="subtitulo">Notas importadas no período, situação da conferência e divergências, por empresa ou da carteira toda.</p></div></div>
+<div class="grid gap-5 lg:grid-cols-2">
+  <form method="get" action="{% url 'web:relatorio-conferencia-pdf' %}" class="card card-body space-y-4" novalidate>
+    {% include "web/_erros_form.html" %}
+    {% include "web/_campo.html" with campo=form.empresa %}
+    <div class="grid gap-4 sm:grid-cols-2">
+      {% include "web/_campo.html" with campo=form.de %}
+      {% include "web/_campo.html" with campo=form.ate %}
+    </div>
+    {% include "web/_campo.html" with campo=form.divergencias %}
+    <div class="flex flex-wrap gap-2">
+      <button class="btn btn-primary" formaction="{% url 'web:relatorio-conferencia-pdf' %}">Baixar PDF</button>
+      <button class="btn btn-secondary" formaction="{% url 'web:relatorio-conferencia-xlsx' %}">Baixar planilha</button>
+    </div>
+  </form>
+  <div class="card card-body text-sm space-y-3">
+    <div class="font-semibold">O que entra no relatório</div>
+    <ul class="list-disc pl-5 space-y-1.5 text-suave">
+      <li>Notas com <strong class="text-texto">emissão</strong> dentro do período, emitidas ou recebidas pela empresa.</li>
+      <li>Quadro por empresa: conformes, com divergência, sem conferência, divergências abertas e a soma das diferenças em aberto.</li>
+      <li>Cada divergência com o valor da nota, o recalculado pelo motor, a diferença e, se tratada, o comentário e quem tratou.</li>
+      <li>A planilha traz tudo em abas (Resumo, Por empresa, Notas, Divergências), com os valores como número.</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

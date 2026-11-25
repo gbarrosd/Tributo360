@@ -9,6 +9,7 @@ from openpyxl import load_workbook
 from pypdf import PdfReader
 
 from contas.papeis import Papel
+from documentos.models import Divergencia, DocumentoFiscal
 from simulacoes.models import Simulacao
 from simulacoes.tests.test_simulacoes import MOTOR_RR, URL_RR, cadastrar_tabela_2027, corpo_2027
 
@@ -173,3 +174,150 @@ def test_membro_sem_acesso_a_empresa_nao_baixa(cenario, simulacao_2027, adiciona
     navegador.force_login(restrito.usuario)
     assert navegador.get(reverse("web:simulacao-pdf", args=[simulacao_2027.pk])).status_code == 404
     assert navegador.get(reverse("web:simulacao-xlsx", args=[simulacao_2027.pk])).status_code == 404
+
+
+# --- Relatório de conferência ----------------------------------------------------------------------
+
+URL_CONF = "web:relatorio-conferencia"
+
+
+def criar_nota(empresa, numero, status, emissao="2026-11-10T10:00:00-03:00", **extra):
+    from django.utils.dateparse import parse_datetime
+
+    dados = {
+        "escritorio": empresa.escritorio,
+        "empresa": empresa,
+        "modelo": DocumentoFiscal.Modelo.NFE,
+        "papel": DocumentoFiscal.Papel.EMITIDA,
+        "chave": f"{numero:044d}",
+        "numero": str(numero),
+        "serie": "1",
+        "emissao": parse_datetime(emissao),
+        "emitente_cnpj": empresa.cnpj,
+        "emitente_nome": empresa.razao_social,
+        "destinatario_cnpj": "11222333000181",
+        "destinatario_nome": "Cliente Atacadista",
+        "hash_xml": f"{numero:064d}",
+        "xml": "<NFe/>",
+        "status": status,
+        "totais": {"valor_nota": "1100.00", "base_calculo": "1000.00", "cbs": "9.00", "ibs": "1.00"},
+    }
+    dados.update(extra)
+    return DocumentoFiscal.objects.create(**dados)
+
+
+def divergir(documento, campo="cbs", status=Divergencia.Status.ABERTA, **extra):
+    dados = {"numero_item": 1, "valor_nota": "9.00", "valor_recalculado": "8.80", "diferenca": "0.20"}
+    dados.update(extra)
+    return Divergencia.objects.create(
+        escritorio=documento.escritorio, documento=documento, campo=campo, status=status, **dados
+    )
+
+
+@pytest.fixture
+def carteira(cenario, criar_empresa, criar_escritorio):
+    mercado = cenario["empresa"]
+    padaria = criar_empresa(cenario["escritorio"], razao_social="Padaria Pão Quente")
+    ok = criar_nota(mercado, 101, DocumentoFiscal.Status.CONFORME)
+    ruim = criar_nota(mercado, 102, DocumentoFiscal.Status.DIVERGENTE)
+    divergir(ruim, "cbs", diferenca="-0.20")
+    divergir(ruim, "ibs", status=Divergencia.Status.JUSTIFICADA, comentario="Redução aplicada pelo cliente")
+    outra = criar_nota(padaria, 201, DocumentoFiscal.Status.DIVERGENTE, papel=DocumentoFiscal.Papel.RECEBIDA)
+    divergir(outra, "base_calculo", valor_nota="100.00", valor_recalculado="90.00", diferenca="10.00")
+    criar_nota(mercado, 103, DocumentoFiscal.Status.CONFORME, emissao="2026-09-01T10:00:00-03:00")  # fora
+    # Escritório B, mesmo período: nunca aparece.
+    escritorio_b, _, _ = criar_escritorio("Escritório B")
+    empresa_b = criar_empresa(escritorio_b, razao_social="Empresa Alheia SA")
+    divergir(criar_nota(empresa_b, 901, DocumentoFiscal.Status.DIVERGENTE), "cbs", diferenca="999.00")
+    return {"mercado": mercado, "padaria": padaria, "empresa_b": empresa_b, "ok": ok, "ruim": ruim}
+
+
+PERIODO = {"de": "2026-11-01", "ate": "2026-11-30"}
+
+
+def test_tela_do_relatorio_abre_com_o_mes_corrente(cenario, carteira):
+    resposta = cenario["navegador"].get(reverse(URL_CONF) + f"?empresa={carteira['mercado'].pk}")
+    pagina = resposta.content.decode()
+    assert resposta.status_code == 200
+    assert reverse("web:relatorio-conferencia-pdf") in pagina and reverse("web:relatorio-conferencia-xlsx") in pagina
+    assert f'value="{carteira["mercado"].pk}" selected' in pagina
+    assert "Empresa Alheia" not in pagina
+    assert reverse(URL_CONF) in cenario["navegador"].get(reverse("web:documentos")).content.decode()
+
+
+def test_pdf_da_carteira_tem_quadro_por_empresa_e_so_divergencias_abertas(cenario, carteira):
+    resposta = cenario["navegador"].get(reverse("web:relatorio-conferencia-pdf"), PERIODO)
+    assert resposta.status_code == 200 and resposta["Content-Type"] == "application/pdf"
+    assert 'filename="conferencia-todas-as-empresas-2026-11-01-a-2026-11-30.pdf"' in resposta["Content-Disposition"]
+    _guardar_para_inspecao(resposta.content, "conferencia.pdf")
+    texto, _ = texto_do_pdf(resposta.content)
+    assert "Mercado Bom Preço" in texto and "Padaria Pão Quente" in texto
+    assert "Por empresa" in texto and "Divergências abertas" in texto
+    assert "102/1" in texto and "201/1" in texto and "101/1" in texto
+    assert "103/1" not in texto  # emitida fora do período
+    assert "Redução aplicada" not in texto  # justificada fica de fora no modo "só as abertas"
+    assert "-0,20" in texto and "+10,00" in texto
+    assert "R$ 10,20" in texto  # diferença absoluta em aberto: 0,20 + 10,00
+    assert "Empresa Alheia" not in texto and "999" not in texto
+    assert "tolerância R$" in texto
+
+
+def test_planilha_de_uma_empresa_com_todas_as_divergencias(cenario, carteira):
+    parametros = {**PERIODO, "empresa": carteira["mercado"].pk, "divergencias": "todas"}
+    resposta = cenario["navegador"].get(reverse("web:relatorio-conferencia-xlsx"), parametros)
+    assert resposta.status_code == 200 and resposta["Content-Type"] == XLSX
+    assert "conferencia-mercado-bom-preco-2026-11-01" in resposta["Content-Disposition"]
+    _guardar_para_inspecao(resposta.content, "conferencia.xlsx")
+    livro = load_workbook(io.BytesIO(resposta.content))
+    assert livro.sheetnames == ["Resumo", "Por empresa", "Notas", "Divergências"]
+
+    resumo = {linha[0]: linha[1] for linha in livro["Resumo"].iter_rows(values_only=True) if linha and linha[0]}
+    assert resumo["Notas no período"] == 2 and resumo["Conformes"] == 1 and resumo["Com divergência"] == 1
+    assert resumo["Divergências abertas"] == 1
+    assert resumo["Diferença em aberto (R$, soma absoluta)"] == 0.2
+
+    notas = list(livro["Notas"].iter_rows(values_only=True))
+    assert [linha[2] for linha in notas[1:]] == ["101", "102"]
+    cab = notas[0]
+    assert notas[1][cab.index("Valor da nota (R$)")] == 1100
+
+    divergencias = list(livro["Divergências"].iter_rows(values_only=True))
+    cab = divergencias[0]
+    linhas = divergencias[1:]
+    assert sorted(linha[cab.index("Situação")] for linha in linhas) == ["Aberta", "Justificada"]
+    assert any(linha[cab.index("Comentário")] == "Redução aplicada pelo cliente" for linha in linhas)
+    assert all(isinstance(linha[cab.index("Diferença (R$)")], float) for linha in linhas)
+
+
+def test_relatorio_vazio_e_periodo_invalido(cenario, carteira):
+    vazio = cenario["navegador"].get(
+        reverse("web:relatorio-conferencia-pdf"), {"de": "2020-01-01", "ate": "2020-01-31"}
+    )
+    assert vazio.status_code == 200
+    assert "Nenhuma nota importada no período." in texto_do_pdf(vazio.content)[0]
+    invertido = cenario["navegador"].get(
+        reverse("web:relatorio-conferencia-pdf"), {"de": "2026-11-30", "ate": "2026-11-01"}
+    )
+    assert invertido.status_code == 400 and "anterior à inicial" in invertido.content.decode()
+    longo = cenario["navegador"].get(
+        reverse("web:relatorio-conferencia-xlsx"), {"de": "2024-01-01", "ate": "2026-11-30"}
+    )
+    assert longo.status_code == 400
+
+
+def test_empresa_de_outro_escritorio_no_filtro_e_recusada(cenario, carteira):
+    for nome in ("web:relatorio-conferencia-pdf", "web:relatorio-conferencia-xlsx"):
+        resposta = cenario["navegador"].get(reverse(nome), {**PERIODO, "empresa": carteira["empresa_b"].pk})
+        assert resposta.status_code == 400, nome
+        assert "Empresa Alheia" not in resposta.content.decode()
+
+
+def test_membro_restrito_so_ve_as_empresas_dele(cenario, carteira, adicionar_membro):
+    restrito = adicionar_membro(cenario["escritorio"], papel=Papel.LEITURA, acesso_todas_empresas=False)
+    restrito.empresas_permitidas.add(carteira["padaria"])
+    navegador = Client()
+    navegador.force_login(restrito.usuario)
+    texto, _ = texto_do_pdf(navegador.get(reverse("web:relatorio-conferencia-pdf"), PERIODO).content)
+    assert "201/1" in texto and "Mercado Bom Preço" not in texto
+    resposta = navegador.get(reverse("web:relatorio-conferencia-pdf"), {**PERIODO, "empresa": carteira["mercado"].pk})
+    assert resposta.status_code == 400

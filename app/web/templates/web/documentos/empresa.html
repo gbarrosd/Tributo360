@@ -4,7 +4,10 @@
 <nav class="migalhas"><a href="{% url 'web:empresas' %}">Empresas</a> › <a href="{% url 'web:empresa' empresa.pk %}">{{ empresa.razao_social }}</a></nav>
 <div class="cabecalho-pagina">
   <div><h1 class="titulo-pagina">Documentos fiscais</h1><p class="subtitulo">{{ total }} nota{{ total|pluralize }} de {{ empresa.razao_social }}</p></div>
-  {% if pode.cadastrar_itens %}<div class="acoes"><a class="btn btn-primary" href="{% url 'web:documentos-importar' empresa.pk %}">{% include "web/_icone.html" with nome="upload" %}Importar XML</a></div>{% endif %}
+  <div class="acoes">
+    <a class="btn btn-outline" href="{% url 'web:relatorio-conferencia' %}?empresa={{ empresa.pk }}">Relatório</a>
+    {% if pode.cadastrar_itens %}<a class="btn btn-primary" href="{% url 'web:documentos-importar' empresa.pk %}">{% include "web/_icone.html" with nome="upload" %}Importar XML</a>{% endif %}
+  </div>
 </div>
 {% include "web/documentos/_filtros.html" %}
 <div class="card">

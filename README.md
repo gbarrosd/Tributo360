@@ -63,6 +63,7 @@ docker compose exec django python manage.py createsuperuser
 | `/empresas/{id}/aliquotas-simples/` | Alíquotas efetivas do Simples por mês |
 | `/empresas/{id}/simular/` | Formulário de simulação (regular ou Simples, conforme a empresa) |
 | `/simulacoes/`, `/simulacoes/{id}/`, `/simulacoes/comparar/` | Histórico, resultado e comparação de cenários |
+| `/documentos/relatorio/` | Relatório de conferência por empresa (ou carteira) e período, em PDF e planilha: quadro por empresa, notas e divergências |
 | `/simulacoes/{id}/relatorio.pdf`, `.xlsx` | Relatório da simulação: totais, premissas, alíquotas com origem e memória de cálculo; versões no rodapé |
 | `/motores/` | Painel de versões dos motores |
 
