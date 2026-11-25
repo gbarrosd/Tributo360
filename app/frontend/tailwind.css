@@ -1,0 +1,202 @@
+/*
+ * Tema do Tributo360 (direção "Escritório"): menu lateral azul-petróleo, fundo claro, números em fonte
+ * tabular. As cores são variáveis CSS trocadas pelo modo escuro (classe .dark no <html>), então os
+ * utilitários (bg-superficie, text-suave...) servem para os dois temas sem prefixo dark:.
+ *
+ * Gerar o CSS: cd app/frontend && npm install && npm run build   (o deploy usa o arquivo gerado)
+ */
+@import "tailwindcss";
+
+@source "../web/templates";
+@source "../web/templatetags";
+@source "../static/web/app.js";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@font-face { font-family: "IBM Plex Sans"; font-weight: 400; font-display: swap; src: url("../vendor/fonts/ibm-plex-sans-400.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Sans"; font-weight: 500; font-display: swap; src: url("../vendor/fonts/ibm-plex-sans-500.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Sans"; font-weight: 600; font-display: swap; src: url("../vendor/fonts/ibm-plex-sans-600.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Sans"; font-weight: 700; font-display: swap; src: url("../vendor/fonts/ibm-plex-sans-700.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 400; font-display: swap; src: url("../vendor/fonts/ibm-plex-mono-400.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 500; font-display: swap; src: url("../vendor/fonts/ibm-plex-mono-500.woff2") format("woff2"); }
+
+:root {
+  --fundo: #f4f6f8;
+  --superficie: #ffffff;
+  --superficie-2: #f7f9fa;
+  --borda: #e1e6eb;
+  --texto: #1b2430;
+  --suave: #637082;
+  --marca: #0f6b7d;
+  --marca-forte: #0b5666;
+  --marca-suave: #e2f0f3;
+  --lateral: #0e3b47;
+  --lateral-texto: #c9dfe5;
+  --ok: #1d7a4a;      --ok-fundo: #e3f4ea;
+  --aviso: #8f5200;   --aviso-fundo: #fff1d9;
+  --erro: #b42318;    --erro-fundo: #fdecea;
+  --info: #1f5fa8;    --info-fundo: #e5effb;
+  --neutro: #4b5664;  --neutro-fundo: #eceff3;
+  --destaque: #f2b84b;
+}
+.dark {
+  --fundo: #0e1418;
+  --superficie: #161f25;
+  --superficie-2: #1b252c;
+  --borda: #27333c;
+  --texto: #e3e9ed;
+  --suave: #93a1ad;
+  --marca: #4fb3c6;
+  --marca-forte: #7cc8d6;
+  --marca-suave: #17323a;
+  --lateral: #0a2730;
+  --lateral-texto: #a9c6ce;
+  --ok: #5cc48d;      --ok-fundo: #15301f;
+  --aviso: #e7a948;   --aviso-fundo: #36270e;
+  --erro: #f2867c;    --erro-fundo: #3a1714;
+  --info: #7db1ec;    --info-fundo: #142a43;
+  --neutro: #b3bec8;  --neutro-fundo: #232e36;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --color-fundo: var(--fundo);
+  --color-superficie: var(--superficie);
+  --color-superficie-2: var(--superficie-2);
+  --color-borda: var(--borda);
+  --color-texto: var(--texto);
+  --color-suave: var(--suave);
+  --color-marca: var(--marca);
+  --color-marca-forte: var(--marca-forte);
+  --color-marca-suave: var(--marca-suave);
+  --color-lateral: var(--lateral);
+  --color-lateral-texto: var(--lateral-texto);
+  --color-ok: var(--ok);
+  --color-ok-fundo: var(--ok-fundo);
+  --color-aviso: var(--aviso);
+  --color-aviso-fundo: var(--aviso-fundo);
+  --color-erro: var(--erro);
+  --color-erro-fundo: var(--erro-fundo);
+  --color-info: var(--info);
+  --color-info-fundo: var(--info-fundo);
+  --color-neutro: var(--neutro);
+  --color-neutro-fundo: var(--neutro-fundo);
+  --color-destaque: var(--destaque);
+}
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body { @apply bg-fundo text-texto font-sans text-sm antialiased; }
+  h1, h2, h3 { text-wrap: balance; }
+  a { @apply text-marca; }
+  a:hover { @apply text-marca-forte underline; }
+  :focus-visible { outline: 2px solid var(--marca); outline-offset: 2px; }
+  [x-cloak] { display: none !important; }
+  pre { @apply font-mono text-xs bg-superficie-2 border border-borda rounded-md p-3 overflow-auto max-h-[30rem]; }
+  details > summary { cursor: pointer; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+}
+
+@layer components {
+  /* Cabeçalho de página */
+  .migalhas { @apply text-xs text-suave flex flex-wrap gap-1 items-center mb-2; }
+  .migalhas a { @apply text-suave; }
+  .titulo-pagina { @apply text-xl font-semibold leading-tight flex flex-wrap items-center gap-2; }
+  .subtitulo { @apply text-xs text-suave mt-1; }
+  .cabecalho-pagina { @apply flex flex-wrap gap-3 justify-between items-start mb-5; }
+  .acoes { @apply flex flex-wrap gap-2; }
+  .secao-titulo { @apply text-base font-semibold mb-2; }
+
+  /* Botões */
+  .btn { @apply inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent px-3.5 py-2 text-sm font-medium leading-none whitespace-nowrap no-underline cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed; }
+  .btn:hover { @apply no-underline; }
+  .btn-primary { @apply bg-marca text-white hover:bg-marca-forte hover:text-white dark:text-fundo dark:hover:text-fundo; }
+  .btn-outline { @apply border-marca text-marca bg-superficie hover:bg-marca-suave hover:text-marca; }
+  .btn-secondary { @apply border-borda text-texto bg-superficie hover:bg-superficie-2 hover:text-texto; }
+  .btn-success { @apply bg-ok text-white hover:opacity-90 hover:text-white dark:text-fundo; }
+  .btn-danger { @apply border-erro/40 text-erro bg-superficie hover:bg-erro-fundo hover:text-erro; }
+  .btn-sm { @apply px-2.5 py-1.5 text-xs; }
+  .btn-lg { @apply px-5 py-2.5 text-base; }
+
+  /* Cartões */
+  .card { @apply bg-superficie border border-borda rounded-lg; }
+  .card-header { @apply flex flex-wrap gap-2 justify-between items-center px-4 py-3 border-b border-borda font-semibold; }
+  .card-body { @apply p-4; }
+  .card-footer { @apply px-4 py-2.5 border-t border-borda text-sm; }
+  .kpi { @apply bg-superficie border border-borda rounded-lg px-4 py-3 min-w-0; }
+  .kpi-rotulo { @apply block text-xs text-suave; }
+  .kpi-valor { @apply block font-mono text-lg font-medium tabular-nums whitespace-nowrap; }
+  .kpi-total { @apply bg-lateral border-lateral text-white; }
+  .kpi-total .kpi-rotulo { @apply text-lateral-texto; }
+
+  /* Selos de situação */
+  .badge { @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium leading-tight whitespace-nowrap align-middle; }
+  .badge-success { @apply bg-ok-fundo text-ok; }
+  .badge-warning { @apply bg-aviso-fundo text-aviso; }
+  .badge-danger { @apply bg-erro-fundo text-erro; }
+  .badge-info { @apply bg-info-fundo text-info; }
+  .badge-secondary { @apply bg-neutro-fundo text-neutro; }
+  .badge-primary { @apply bg-marca-suave text-marca; }
+
+  /* Avisos (as tags das mensagens do Django: success, info, warning, error→danger) */
+  .alert { @apply rounded-lg border px-4 py-3 text-sm mb-4; }
+  .alert-success { @apply bg-ok-fundo border-ok/25 text-ok; }
+  .alert-warning { @apply bg-aviso-fundo border-aviso/25 text-aviso; }
+  .alert-danger { @apply bg-erro-fundo border-erro/25 text-erro; }
+  .alert-info { @apply bg-info-fundo border-info/25 text-info; }
+  .alert-secondary, .alert-debug { @apply bg-neutro-fundo border-borda text-neutro; }
+  .alert a { @apply text-current underline; }
+
+  /* Formulários */
+  .form-label { @apply block text-xs font-medium text-suave mb-1; }
+  .campo { @apply block w-full rounded-md border border-borda bg-superficie px-3 py-2 text-sm text-texto placeholder:text-suave/70 transition-colors focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20; }
+  select.campo { @apply pr-8; }
+  .campo-sm { @apply px-2 py-1.5 text-xs; }
+  .campo.is-invalid { @apply border-erro focus:ring-erro/20; }
+  .caixa { @apply size-4 rounded border-borda accent-marca align-middle; }
+  .invalid-feedback { @apply mt-1 text-xs text-erro; }
+  .form-text { @apply mt-1 text-xs text-suave; }
+  .grade-form { @apply grid gap-x-4 gap-y-4 sm:grid-cols-12; }
+
+  /* Tabelas */
+  .tabela-wrap { @apply overflow-x-auto; }
+  .tabela { @apply w-full text-sm border-collapse; }
+  .tabela th { @apply text-left text-xs font-medium text-suave bg-superficie-2 px-4 py-2 border-b border-borda whitespace-nowrap; }
+  .tabela td { @apply px-4 py-2.5 border-b border-borda align-middle; }
+  .tabela tbody tr:last-child td { @apply border-b-0; }
+  .tabela-hover tbody tr:hover td { @apply bg-superficie-2; }
+  .tabela-compacta th, .tabela-compacta td { @apply px-3 py-1.5; }
+  .tabela .vazio { @apply text-suave text-center py-6; }
+  .num { @apply text-right font-mono tabular-nums whitespace-nowrap; }
+  .codigo { @apply font-mono text-xs text-suave; }
+
+  /* Abas (filtros do catálogo) */
+  .abas { @apply flex flex-wrap gap-1 border-b border-borda mb-4; }
+  .aba { @apply inline-flex items-center gap-2 px-3 py-2 -mb-px border-b-2 border-transparent text-suave text-sm font-medium no-underline hover:text-texto hover:no-underline; }
+  .aba-ativa { @apply border-marca text-marca hover:text-marca; }
+
+  /* Lista de definições (premissas, memória de cálculo) */
+  .definicoes { @apply grid gap-x-4 gap-y-1.5 sm:grid-cols-[12rem_1fr] text-sm; }
+  .definicoes dt { @apply text-suave; }
+  .definicoes dd { @apply m-0 min-w-0 break-words; }
+
+  /* Menu lateral */
+  .nav-secao { @apply px-3 pt-5 pb-1 text-[0.65rem] font-medium uppercase tracking-widest text-lateral-texto/60; }
+  .nav-link { @apply flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-lateral-texto no-underline hover:bg-white/10 hover:text-white hover:no-underline; }
+  .nav-link svg { @apply size-4 shrink-0 opacity-80; }
+  .nav-ativo { @apply bg-white/12 text-white font-medium; }
+
+  /* Menus suspensos (Alpine) */
+  .menu { @apply absolute right-0 z-30 mt-2 min-w-56 rounded-lg border border-borda bg-superficie py-1 shadow-lg; }
+  .menu-item { @apply flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm text-texto no-underline hover:bg-superficie-2 hover:text-texto hover:no-underline cursor-pointer; }
+  .menu-divisor { @apply my-1 border-t border-borda; }
+
+  /* Linha de item no formulário de simulação */
+  .linha-item { @apply rounded-lg border border-borda bg-superficie-2 p-3; }
+}
+
+/* NFS-e: campos que só aparecem quando o documento é NFS-e (Simples) */
+.campo-nfse { display: none; }
+form[data-nfse="1"] .campo-nfse { display: block; }

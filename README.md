@@ -17,7 +17,8 @@ app/                 Django 5.2 + DRF (o produto)
   simulacoes/        cálculos (regime regular e Simples) gravados com payload, resposta e versão;
                      alíquotas efetivas do Simples por empresa e mês (D3)
   catalogo/          produtos e serviços da empresa (NCM/NBS, CST, cClassTrib, cAtivSN), validação e aprovação
-  web/               telas (Django Templates + Bootstrap, sem build de front)
+  web/               telas (Django Templates + Tailwind CSS + HTMX + Alpine.js)
+  frontend/          fonte do tema (tailwind.css); gera static/web/app.css, o deploy não precisa de Node
 engines/             motores da Receita como submódulos git, presos nas tags oficiais
 docker/              Dockerfile dos motores Java e configuração do nginx
 docker-compose.yml   mesmo compose para dev, homologação e a VPS
@@ -82,6 +83,24 @@ python manage.py migrate
 pytest            # inclui a suíte cross-tenant e o teste de arquitetura
 ruff check . && ruff format --check .
 ```
+
+### Visual (Tailwind + HTMX + Alpine)
+
+O tema fica em `app/frontend/tailwind.css` (cores do tema claro e escuro como variáveis CSS, componentes
+`btn`, `card`, `badge`, `alert`, `campo`, `tabela`...). O CSS gerado (`app/static/web/app.css`) e as cópias de
+HTMX, Alpine e das fontes IBM Plex em `app/static/vendor/` ficam versionados, então o deploy e o Docker não
+precisam de Node. Só quem mexer em template ou no tema precisa regerar:
+
+```bash
+cd app/frontend
+npm ci
+npm run dev      # observa os templates e regera o CSS enquanto você edita
+npm run build    # CSS minificado + cópia de HTMX/Alpine/fontes; o CI confere que está em dia
+```
+
+Interatividade: filtros das listas por HTMX (`hx-select="#resultado"`, sem view parcial); menus, seleção em
+tabelas e confirmações com Alpine no próprio template; `static/web/app.js` só cuida do tema e do formulário
+de simulação. Tudo continua funcionando sem JavaScript.
 
 ## Isolamento entre escritórios
 

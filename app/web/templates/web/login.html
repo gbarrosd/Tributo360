@@ -1,17 +1,29 @@
 {% extends "web/base.html" %}
 {% block titulo %}Entrar{% endblock %}
 {% block conteudo %}
-<div class="row justify-content-center">
-  <div class="col-sm-8 col-md-5 col-lg-4">
-    <h1 class="h4 mb-3">Entrar</h1>
-    <form method="post" class="card card-body">{% csrf_token %}
+<div class="mx-auto mt-6 grid max-w-4xl overflow-hidden rounded-xl border border-borda bg-superficie md:grid-cols-2">
+  <div class="hidden md:flex flex-col justify-between bg-lateral p-8 text-lateral-texto">
+    <div>
+      <div class="text-xs font-medium uppercase tracking-widest text-lateral-texto/70">Reforma Tributária do Consumo</div>
+      <p class="mt-3 text-2xl font-semibold leading-snug text-white">CBS, IBS e Imposto Seletivo da sua carteira, calculados pelos motores oficiais.</p>
+    </div>
+    <ul class="mt-8 space-y-2 text-sm">
+      <li>Simulações com memória de cálculo por item</li>
+      <li>Catálogo de produtos e serviços validado</li>
+      <li>Versão do motor guardada em cada cálculo</li>
+    </ul>
+  </div>
+  <div class="p-6 sm:p-8">
+    <h1 class="text-xl font-semibold">Entrar</h1>
+    <p class="subtitulo mb-5">Use o e-mail cadastrado no escritório.</p>
+    <form method="post" class="space-y-4">{% csrf_token %}
       {% include "web/_erros_form.html" %}
       {% include "web/_campo.html" with campo=form.username %}
       {% include "web/_campo.html" with campo=form.password %}
       <input type="hidden" name="next" value="{{ next }}">
-      <button class="btn btn-primary w-100">Entrar</button>
+      <button class="btn btn-primary w-full">Entrar</button>
     </form>
-    <p class="mt-3 small text-center">Ainda não tem conta? <a href="{% url 'web:cadastro' %}">Criar conta do escritório</a></p>
+    <p class="mt-5 text-center text-sm text-suave">Ainda não tem conta? <a href="{% url 'web:cadastro' %}">Criar conta do escritório</a></p>
   </div>
 </div>
 {% endblock %}

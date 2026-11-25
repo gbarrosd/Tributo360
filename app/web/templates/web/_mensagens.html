@@ -1,0 +1,6 @@
+{% for mensagem in messages %}
+<div class="alert alert-{% if mensagem.tags == 'error' %}danger{% else %}{{ mensagem.tags }}{% endif %} flex items-start justify-between gap-3" role="alert" x-data="{ aberto: true }" x-show="aberto">
+  <span>{{ mensagem }}</span>
+  <button type="button" class="opacity-70 hover:opacity-100" @click="aberto = false" aria-label="Fechar">{% include "web/_icone.html" with nome="fechar" %}</button>
+</div>
+{% endfor %}

@@ -1,21 +1,26 @@
 {% extends "web/base.html" %}
 {% block titulo %}{% if empresa %}Editar {{ empresa.razao_social }}{% else %}Nova empresa{% endif %}{% endblock %}
 {% block conteudo %}
-<nav class="small mb-2"><a href="{% url 'web:empresas' %}">Empresas</a>{% if empresa %} › <a href="{% url 'web:empresa' empresa.pk %}">{{ empresa.razao_social }}</a>{% endif %}</nav>
-<h1 class="h4 mb-3">{% if empresa %}Editar empresa{% else %}Nova empresa{% endif %}</h1>
-<form method="post" class="card card-body" style="max-width: 48rem" novalidate>{% csrf_token %}
-  {% include "web/_erros_form.html" %}
-  <div class="row">
-    {% include "web/_campo.html" with campo=form.cnpj classe="col-md-5 mb-3" %}
-    {% include "web/_campo.html" with campo=form.razao_social classe="col-md-7 mb-3" %}
-    {% include "web/_campo.html" with campo=form.nome_fantasia classe="col-md-7 mb-3" %}
-    {% include "web/_campo.html" with campo=form.cnae_principal classe="col-md-5 mb-3" %}
-    {% include "web/_campo.html" with campo=form.regime classe="col-md-6 mb-3" %}
-    {% include "web/_campo.html" with campo=form.crt classe="col-md-6 mb-3" %}
-    {% include "web/_campo.html" with campo=form.uf classe="col-md-3 mb-3" %}
-    {% include "web/_campo.html" with campo=form.municipio_ibge classe="col-md-9 mb-3" %}
+<nav class="migalhas"><a href="{% url 'web:empresas' %}">Empresas</a>{% if empresa %} › <a href="{% url 'web:empresa' empresa.pk %}">{{ empresa.razao_social }}</a>{% endif %}</nav>
+<div class="cabecalho-pagina"><h1 class="titulo-pagina">{% if empresa %}Editar empresa{% else %}Nova empresa{% endif %}</h1></div>
+<form method="post" class="card max-w-3xl" novalidate>{% csrf_token %}
+  <div class="card-body space-y-4">
+    {% include "web/_erros_form.html" %}
+    <div class="grade-form">
+      {% include "web/_campo.html" with campo=form.cnpj classe="sm:col-span-5" %}
+      {% include "web/_campo.html" with campo=form.razao_social classe="sm:col-span-7" %}
+      {% include "web/_campo.html" with campo=form.nome_fantasia classe="sm:col-span-7" %}
+      {% include "web/_campo.html" with campo=form.cnae_principal classe="sm:col-span-5" %}
+      {% include "web/_campo.html" with campo=form.regime classe="sm:col-span-6" %}
+      {% include "web/_campo.html" with campo=form.crt classe="sm:col-span-6" %}
+      {% include "web/_campo.html" with campo=form.uf classe="sm:col-span-3" %}
+      {% include "web/_campo.html" with campo=form.municipio_ibge classe="sm:col-span-9" %}
+    </div>
+    {% include "web/_campo.html" with campo=form.ativa %}
   </div>
-  {% include "web/_campo.html" with campo=form.ativa %}
-  <div><button class="btn btn-primary">Salvar</button></div>
+  <div class="card-footer flex justify-end gap-2">
+    <a class="btn btn-secondary" href="{% if empresa %}{% url 'web:empresa' empresa.pk %}{% else %}{% url 'web:empresas' %}{% endif %}">Cancelar</a>
+    <button class="btn btn-primary">Salvar</button>
+  </div>
 </form>
 {% endblock %}

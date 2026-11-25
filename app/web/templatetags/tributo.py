@@ -66,7 +66,7 @@ ESTADOS = {
 @register.simple_tag
 def estado_item(estado):
     cor, texto = ESTADOS.get(estado, ("secondary", estado))
-    return format_html('<span class="badge text-bg-{}">{}</span>', cor, texto)
+    return format_html('<span class="badge badge-{}">{}</span>', cor, texto)
 
 
 SITUACOES = {
@@ -79,7 +79,7 @@ SITUACOES = {
 @register.simple_tag
 def situacao(valor):
     cor, texto = SITUACOES.get(valor, ("secondary", valor))
-    return format_html('<span class="badge text-bg-{}">{}</span>', cor, texto)
+    return format_html('<span class="badge badge-{}">{}</span>', cor, texto)
 
 
 STATUS_ITEM = {
@@ -92,7 +92,7 @@ STATUS_ITEM = {
 @register.simple_tag
 def status_item(valor):
     cor, texto = STATUS_ITEM.get(valor, ("secondary", valor))
-    return format_html('<span class="badge text-bg-{}">{}</span>', cor, texto)
+    return format_html('<span class="badge badge-{}">{}</span>', cor, texto)
 
 
 ROTULOS_MEMORIA = {"cbs": "CBS", "ibsUF": "IBS estadual", "ibsMun": "IBS municipal", "is": "Imposto Seletivo"}
@@ -102,7 +102,7 @@ ROTULOS_MEMORIA = {"cbs": "CBS", "ibsUF": "IBS estadual", "ibsMun": "IBS municip
 def memoria(dados):
     """Memória de cálculo do motor (dict de textos, às vezes aninhado) como lista de definições."""
     if not dados:
-        return mark_safe('<p class="text-body-secondary small mb-0">O motor não devolveu memória de cálculo.</p>')
+        return mark_safe('<p class="text-suave text-xs">O motor não devolveu memória de cálculo.</p>')
     return _memoria_html(dados)
 
 
@@ -110,14 +110,13 @@ def _memoria_html(dados):
     if isinstance(dados, dict):
         linhas = format_html_join(
             "",
-            '<dt class="col-sm-3">{}</dt><dd class="col-sm-9">{}</dd>',
+            "<dt>{}</dt><dd>{}</dd>",
             ((ROTULOS_MEMORIA.get(chave, chave), _memoria_html(valor)) for chave, valor in dados.items()),
         )
-        return format_html('<dl class="row mb-0 small">{}</dl>', linhas)
+        return format_html('<dl class="definicoes definicoes-memoria">{}</dl>', linhas)
     if isinstance(dados, list):
-        return format_html(
-            '<ul class="mb-0">{}</ul>', format_html_join("", "<li>{}</li>", ((_memoria_html(v),) for v in dados))
-        )
+        itens = format_html_join("", "<li>{}</li>", ((_memoria_html(v),) for v in dados))
+        return format_html('<ul class="list-disc pl-5">{}</ul>', itens)
     return format_html("{}", dados)
 
 
@@ -139,15 +138,10 @@ def item_da_lista(lista, indice):
 
 
 @register.filter
-def bs(campo, extra=""):
-    """Renderiza o widget do campo com as classes do Bootstrap (e is-invalid quando há erro)."""
+def controle(campo, extra=""):
+    """Renderiza o widget do campo com as classes do tema (e is-invalid quando há erro)."""
     tipo = getattr(campo.field.widget, "input_type", "")
-    if tipo == "checkbox":
-        classe = "form-check-input"
-    elif tipo == "select" or campo.field.widget.__class__.__name__ == "Select":
-        classe = "form-select"
-    else:
-        classe = "form-control"
+    classe = "caixa" if tipo == "checkbox" else "campo"
     if campo.errors:
         classe += " is-invalid"
     if extra:

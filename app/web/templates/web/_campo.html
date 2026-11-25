@@ -1,13 +1,13 @@
 {% load tributo %}{% if campo.field.widget.input_type == "checkbox" %}
-<div class="form-check {{ classe|default:'mb-3' }}">
-  {{ campo|bs }}
-  <label class="form-check-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
-  {% for erro in campo.errors %}<div class="invalid-feedback d-block">{{ erro }}</div>{% endfor %}
+<div class="{{ classe|default:'' }}">
+  <label class="inline-flex items-center gap-2 text-sm" for="{{ campo.id_for_label }}">{{ campo|controle }} {{ campo.label }}</label>
+  {% for erro in campo.errors %}<div class="invalid-feedback">{{ erro }}</div>{% endfor %}
+  {% if campo.help_text %}<div class="form-text">{{ campo.help_text }}</div>{% endif %}
 </div>
 {% else %}
-<div class="{{ classe|default:'mb-3' }}">
+<div class="min-w-0 {{ classe|default:'' }}">
   <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
-  {{ campo|bs }}
+  {{ campo|controle }}
   {% for erro in campo.errors %}<div class="invalid-feedback">{{ erro }}</div>{% endfor %}
   {% if campo.help_text %}<div class="form-text">{{ campo.help_text }}</div>{% endif %}
 </div>

@@ -1,29 +1,32 @@
 {% extends "web/base.html" %}
 {% block titulo %}Simulações{% endblock %}
 {% block conteudo %}
-<h1 class="h4 mb-3">Histórico de simulações</h1>
-<form class="row g-2 mb-3" method="get">
-  <div class="col-md-4">
-    <select class="form-select" name="empresa">
+<div class="cabecalho-pagina"><div><h1 class="titulo-pagina">Histórico de simulações</h1>
+  <p class="subtitulo">Marque de 2 a {{ max_comparacao }} simulações para comparar os cenários lado a lado.</p></div></div>
+<div class="card">
+  <form class="flex flex-wrap items-center gap-2 border-b border-borda p-3" method="get" {% include "web/_filtro_htmx.html" %}>
+    <select class="campo w-full sm:w-72" name="empresa" aria-label="Empresa">
       <option value="">Todas as empresas</option>
       {% for e in empresas %}<option value="{{ e.pk }}" {% if empresa_id == e.pk|stringformat:"s" %}selected{% endif %}>{{ e.razao_social }}</option>{% endfor %}
     </select>
-  </div>
-  <div class="col-auto">
-    <select class="form-select" name="tipo">
+    <select class="campo w-auto" name="tipo" aria-label="Regime">
       <option value="">Regular e Simples</option>
       <option value="regular" {% if tipo == "regular" %}selected{% endif %}>Regime regular</option>
       <option value="simples" {% if tipo == "simples" %}selected{% endif %}>Simples Nacional</option>
     </select>
-  </div>
-  <div class="col-md-3"><input class="form-control" name="q" value="{{ busca }}" placeholder="Nome do cenário"></div>
-  <div class="col-auto"><button class="btn btn-outline-secondary">Filtrar</button></div>
-</form>
-<form method="get" action="{% url 'web:comparar' %}" data-max-comparacao="{{ max_comparacao }}" id="form-comparar">
-  <div class="d-flex align-items-center gap-2 mb-2">
-    <button class="btn btn-primary btn-sm" id="botao-comparar" disabled>Comparar selecionadas</button>
-    <span class="small text-body-secondary">Marque de 2 a {{ max_comparacao }} simulações.</span>
-  </div>
-  <div class="card">{% include "web/simulacoes/_tabela.html" with selecionar=True %}</div>
-</form>
+    <div class="relative w-full sm:w-64">
+      <span class="pointer-events-none absolute inset-y-0 left-3 grid place-items-center text-suave">{% include "web/_icone.html" with nome="lupa" %}</span>
+      <input class="campo pl-9" name="q" value="{{ busca }}" placeholder="Nome do cenário" aria-label="Nome do cenário">
+    </div>
+    <noscript><button class="btn btn-secondary">Filtrar</button></noscript>
+  </form>
+  <form method="get" action="{% url 'web:comparar' %}" id="resultado"
+        x-data="{ marcadas: 0, maximo: {{ max_comparacao }} }" @change="marcadas = $el.querySelectorAll('[data-comparar]:checked').length">
+    <div class="flex flex-wrap items-center gap-3 border-b border-borda px-4 py-2.5">
+      <button class="btn btn-primary btn-sm" :disabled="marcadas < 2 || marcadas > maximo"
+        x-text="marcadas > maximo ? 'No máximo ' + maximo : 'Comparar selecionadas' + (marcadas ? ' (' + marcadas + ')' : '')">Comparar selecionadas</button>
+    </div>
+    {% include "web/simulacoes/_tabela.html" with selecionar=True %}
+  </form>
+</div>
 {% endblock %}

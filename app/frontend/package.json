@@ -1,0 +1,17 @@
+{
+  "name": "tributo360-frontend",
+  "private": true,
+  "description": "Só gera o CSS do Tailwind e copia HTMX/Alpine para app/static/vendor. O deploy usa os arquivos já gerados e não precisa de Node.",
+  "scripts": {
+    "build": "tailwindcss -i ./tailwind.css -o ../static/web/app.css --minify && node copiar-vendor.mjs",
+    "dev": "tailwindcss -i ./tailwind.css -o ../static/web/app.css --watch"
+  },
+  "devDependencies": {
+    "@fontsource/ibm-plex-mono": "^5.2.6",
+    "@fontsource/ibm-plex-sans": "^5.2.6",
+    "@tailwindcss/cli": "4.1.11",
+    "alpinejs": "3.14.8",
+    "htmx.org": "2.0.4",
+    "tailwindcss": "4.1.11"
+  }
+}

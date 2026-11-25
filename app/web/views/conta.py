@@ -6,11 +6,14 @@ from django.contrib.auth import login, logout
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
+from django.db.models import Count
 from django.http import Http404
 from django.shortcuts import redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from auditoria.servicos import ip_da_requisicao
+from catalogo.models import ItemCatalogo
 from contas import servicos as contas_servicos
 from contas.models import Escritorio
 from contas.serializers import CadastroSerializer
@@ -145,11 +148,27 @@ def escritorio_novo(request):
 @tela()
 def inicio(request):
     empresas = Empresa.tenant(request).filter(ativa=True)
-    recentes = Simulacao.tenant(request).select_related("empresa", "versao_motor")[:8]
+    simulacoes = Simulacao.tenant(request)
+    recentes = simulacoes.select_related("empresa", "versao_motor")[:8]
+    agora = timezone.localtime()
+    itens = ItemCatalogo.tenant(request).filter(ativo=True, empresa__ativa=True)
+    contagem_itens = dict(
+        itens.order_by()
+        .values("status_classificacao")
+        .annotate(total=Count("pk"))
+        .values_list("status_classificacao", "total")
+    )
     return render(
         request,
         "web/inicio.html",
-        {"total_empresas": empresas.count(), "empresas": empresas[:8], "recentes": recentes},
+        {
+            "total_empresas": empresas.count(),
+            "empresas": empresas[:8],
+            "recentes": recentes,
+            "simulacoes_no_mes": simulacoes.filter(criado_em__year=agora.year, criado_em__month=agora.month).count(),
+            "itens_pendentes": contagem_itens.get(ItemCatalogo.Status.PENDENTE, 0),
+            "itens_revisar": contagem_itens.get(ItemCatalogo.Status.REVISAR, 0),
+        },
     )
 
 

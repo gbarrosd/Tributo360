@@ -363,3 +363,45 @@ def test_duplicar_cenario_preenche_o_formulario(cenario, motores_falsos):
         reverse("web:simular", args=[cenario["empresa"].pk]) + f"?a_partir_de={simulacao.pk}"
     ).content.decode()
     assert 'value="22030000"' in pagina and "Cenário base (variação)" in pagina
+
+
+# --- Visual (Tailwind + HTMX + Alpine) ---------------------------------------------------------
+
+
+def test_painel_mostra_contagens_da_carteira(cenario, criar_item, criar_simulacao):
+    criar_item(cenario["empresa"], status_classificacao=ItemCatalogo.Status.PENDENTE)
+    criar_item(cenario["empresa"], status_classificacao=ItemCatalogo.Status.REVISAR)
+    criar_item(cenario["empresa"], status_classificacao=ItemCatalogo.Status.APROVADO)
+    criar_simulacao(cenario["empresa"], rotulo="Cenário do mês")
+    resposta = navegador_de(cenario["dono"]).get(reverse("web:inicio"))
+    assert resposta.status_code == 200
+    contexto = resposta.context
+    assert (contexto["total_empresas"], contexto["simulacoes_no_mes"]) == (2, 1)
+    assert (contexto["itens_pendentes"], contexto["itens_revisar"]) == (1, 1)
+    assert "Cenário do mês" in resposta.content.decode()
+
+
+@pytest.mark.parametrize(
+    ("rota", "secao"),
+    [
+        ("web:inicio", "inicio"),
+        ("web:empresas", "empresas"),
+        ("web:historico", "simulacoes"),
+        ("web:motores", "motores"),
+    ],
+)
+def test_menu_lateral_destaca_a_secao(cenario, rota, secao, motores_falsos):
+    resposta = navegador_de(cenario["dono"]).get(reverse(rota))
+    assert resposta.context["secao_menu"] == secao
+
+
+def test_paginas_de_empresa_destacam_empresas_no_menu(cenario):
+    resposta = navegador_de(cenario["dono"]).get(reverse("web:catalogo", args=[cenario["empresa"].pk]))
+    assert resposta.context["secao_menu"] == "empresas"
+    assert 'class="nav-link nav-ativo"' in resposta.content.decode().replace("  ", " ")
+
+
+def test_filtro_de_empresas_serve_o_htmx_com_a_mesma_view(cenario):
+    resposta = navegador_de(cenario["dono"]).get(reverse("web:empresas") + "?q=mercado", HTTP_HX_REQUEST="true")
+    pagina = resposta.content.decode()
+    assert 'id="resultado"' in pagina and "Mercado Bom Preço" in pagina and "Padaria Simples" not in pagina
